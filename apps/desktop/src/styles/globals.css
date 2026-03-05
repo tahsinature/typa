@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+/* ── Dark theme (default) — native macOS inspired ── */
+:root {
+  --bg: #212226;
+  --bg-secondary: #282a2f;
+  --bg-elevated: #2e3035;
+  --bg-hover: #2f3238;
+  --bg-active: #383b42;
+  --bg-titlebar: #2b2d32;
+  --bg-sidebar: #212226;
+  --bg-input: #35373d;
+
+  --text: #cccccc;
+  --text-secondary: #a0a0a0;
+  --text-muted: #6e6e6e;
+  --text-faint: #4a4a4a;
+
+  --cl-accent: #007aff;
+  --cl-accent-soft: rgba(0, 122, 255, 0.15);
+  --cl-accent-hover: #0066d6;
+  --cl-result: #32d74b;
+  --cl-danger: #ff453a;
+
+  --cl-border: #3c3c3c;
+  --cl-border-subtle: #2d2d30;
+
+  --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-elevated: #ffffff;
+  --bg-hover: #e5e5e5;
+  --bg-active: #d4d4d4;
+  --bg-titlebar: #e8e8e8;
+  --bg-sidebar: #f3f3f3;
+  --bg-input: #ffffff;
+
+  --text: #1d1d1f;
+  --text-secondary: #636366;
+  --text-muted: #8e8e93;
+  --text-faint: #aeaeb2;
+
+  --cl-accent: #007aff;
+  --cl-accent-soft: rgba(0, 122, 255, 0.1);
+  --cl-accent-hover: #0066d6;
+  --cl-result: #28a745;
+  --cl-danger: #ff3b30;
+
+  --cl-border: #d1d1d6;
+  --cl-border-subtle: #e5e5ea;
+
+  --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Tailwind theme mapping ── */
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-active: var(--bg-active);
+  --color-bg-titlebar: var(--bg-titlebar);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-input: var(--bg-input);
+
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-accent: var(--cl-accent);
+  --color-accent-soft: var(--cl-accent-soft);
+  --color-accent-hover: var(--cl-accent-hover);
+  --color-result: var(--cl-result);
+  --color-danger: var(--cl-danger);
+
+  --color-border: var(--cl-border);
+  --color-border-subtle: var(--cl-border-subtle);
+}
+
+/* ── shadcn compat ── */
+:root {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --primary: var(--cl-accent);
+  --primary-foreground: #ffffff;
+  --muted: var(--bg-secondary);
+  --muted-foreground: var(--text-muted);
+  --border: var(--cl-border);
+  --ring: var(--cl-accent);
+  --radius: 0.375rem;
+}
+
+/* ── Base ── */
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Allow text selection inside editors and textareas */
+textarea, input, .monaco-editor, [contenteditable] {
+  user-select: text;
+}
+
+/* ── Monaco gutter separator ── */
+.monaco-editor .line-numbers {
+  border-right: 1px solid var(--cl-border-subtle) !important;
+  padding-right: 8px !important;
+}
+
+
+/* ── Monaco result decorations ── */
+.result-decoration {
+  color: var(--cl-result) !important;
+  font-style: italic;
+  opacity: 0.85;
+}
+
+/* ── macOS-style scrollbars ── */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-faint);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Hidden scrollbar utility ── */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Native drag region ── */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ── Textarea native feel ── */
+textarea {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+}
+textarea::placeholder {
+  color: var(--text-faint);
+}
+textarea:focus {
+  outline: none;
+}
+
+/* ── Smooth allotment sash ── */
+.sash-container .sash {
+  transition: background-color 0.15s ease;
+}
+.sash-container .sash::before {
+  background-color: var(--cl-border-subtle) !important;
+}
+.sash-container .sash:hover::before {
+  background-color: var(--cl-border) !important;
+}

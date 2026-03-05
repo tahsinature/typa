@@ -1,0 +1,10 @@
+{
+  "identifier": "default",
+  "description": "Default permissions",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "store:default"
+  ]
+}
