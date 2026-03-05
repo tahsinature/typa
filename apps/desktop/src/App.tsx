@@ -75,6 +75,19 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTabId, tabs, addTab, closeTab, setActiveTab, saveDocument]);
 
+  useEffect(() => {
+    const prevent = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    window.addEventListener('dragover', prevent);
+    window.addEventListener('drop', prevent);
+    return () => {
+      window.removeEventListener('dragover', prevent);
+      window.removeEventListener('drop', prevent);
+    };
+  }, []);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-bg text-text">
       <TabBar

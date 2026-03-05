@@ -16,7 +16,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useTabStore, type Tab } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
-import { CloseIcon, DragHandleIcon, PlusIcon } from '@/components/Icons';
+import { CloseIcon, DragHandleIcon, PlusIcon, LayoutHorizontalIcon, LayoutVerticalIcon } from '@/components/Icons';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface SortableTabProps {
   tab: Tab;
@@ -232,6 +233,9 @@ export function TabBar({ editingTabId, onEditingTabIdChange }: TabBarProps) {
       {/* Remaining space */}
       <div className="flex-1 h-full" />
 
+      {/* Layout toggle */}
+      <LayoutToggle />
+
       {/* Drag handle */}
       <button
         onMouseDown={(e) => { e.preventDefault(); getCurrentWindow().startDragging(); }}
@@ -250,5 +254,21 @@ export function TabBar({ editingTabId, onEditingTabIdChange }: TabBarProps) {
         <PlusIcon />
       </button>
     </div>
+  );
+}
+
+function LayoutToggle() {
+  const layout = useSettingsStore((s) => s.layout);
+  const toggleLayout = useSettingsStore((s) => s.toggleLayout);
+  const isVertical = layout === 'vertical';
+
+  return (
+    <button
+      onClick={toggleLayout}
+      className="flex items-center justify-center w-[38px] h-[38px] text-text-faint hover:text-text-muted transition-colors shrink-0"
+      title={isVertical ? 'Switch to side-by-side' : 'Switch to top-bottom'}
+    >
+      {isVertical ? <LayoutHorizontalIcon /> : <LayoutVerticalIcon />}
+    </button>
   );
 }

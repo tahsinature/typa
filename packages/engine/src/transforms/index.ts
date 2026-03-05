@@ -5,6 +5,8 @@ import './hashing';
 import './formatting';
 import './web';
 import './numbers';
+import './diff';
+import './image-diff';
 
 // Re-export registry
 export {

@@ -2,13 +2,14 @@ import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { Allotment } from "allotment";
 import MonacoEditor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import { JsonViewer } from "@textea/json-viewer";
 import { getAllTransforms, getTransform } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useDocumentStore } from "@/stores/documentStore";
 import { useEngineStore } from "@/stores/engineStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { CodeIcon, TreeIcon } from "@/components/Icons";
+import { CodeIcon, WrapIcon } from "@/components/Icons";
+import { getViewersForTransform } from "@/viewers";
+import { getInputWidgetsForTransform } from "@/widgets";
 
 // Access Monaco's internal QuickInputService by walking the parent chain
 function getQuickInputService(ed: editor.IStandaloneCodeEditor): any {
@@ -117,6 +118,7 @@ function openFilePicker(ed: editor.IStandaloneCodeEditor) {
           id: doc.id,
           label: doc.name,
           input: doc.input,
+          input2: '',
           output: doc.output,
           selectedTransformId: doc.selectedTransformId,
         });
@@ -208,37 +210,48 @@ export function DualPane() {
   const activeTabId = useTabStore((s) => s.activeTabId);
   const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const updateInput = useTabStore((s) => s.updateInput);
+  const updateInput2 = useTabStore((s) => s.updateInput2);
   const updateOutput = useTabStore((s) => s.updateOutput);
   const setSelectedTransform = useTabStore((s) => s.setSelectedTransform);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
+  const layout = useSettingsStore((s) => s.layout);
 
   const inputEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const outputEditorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const [viewerMode, setViewerMode] = useState(false);
+  const [activeViewerId, setActiveViewerId] = useState<string | null>(null);
+  const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+  const [inputWrap, setInputWrap] = useState(true);
+  const [outputWrap, setOutputWrap] = useState(true);
   const input = tab?.input ?? "";
+  const input2 = tab?.input2 ?? "";
   const output = tab?.output ?? "";
   const selectedTransformId = tab?.selectedTransformId ?? "calculator";
 
-  // Transforms that support a custom viewer
-  const hasViewer = selectedTransformId === "json-format" || selectedTransformId === "json-minify";
+  // Look up available viewers/widgets for the current transform
+  const transform = selectedTransformId !== "calculator" ? getTransform(selectedTransformId) : undefined;
+  const availableViewers = getViewersForTransform(transform?.viewers);
+  const activeViewer = availableViewers.find((v) => v.id === activeViewerId) ?? null;
+  const availableWidgets = getInputWidgetsForTransform(transform?.inputWidgets);
+  const activeWidget = availableWidgets.find((w) => w.id === activeWidgetId) ?? null;
+  const inputCount = transform?.inputs ?? 1;
 
-  // Parse JSON for the viewer (only when needed)
-  const parsedJson = useMemo(() => {
-    if (!viewerMode || !hasViewer) return null;
+  // Parse output for the active viewer
+  const parsedData = useMemo(() => {
+    if (!activeViewer) return null;
     try {
-      return JSON.parse(output);
+      return activeViewer.parse(output);
     } catch {
       return null;
     }
-  }, [viewerMode, hasViewer, output]);
+  }, [activeViewer, output]);
 
-  // Run the active transform on input
+  // Run the active transform on input(s)
   const runTransform = useCallback(
-    async (transformId: string, text: string) => {
+    async (transformId: string, ...texts: string[]) => {
       if (transformId === "calculator") {
         const engine = useEngineStore.getState().engine;
-        const results = engine.evaluateDocument(text);
-        const outputLines = text.split("\n").map((_, i) => {
+        const results = engine.evaluateDocument(texts[0]);
+        const outputLines = texts[0].split("\n").map((_, i) => {
           const r = results[i];
           if (!r || r.result === null) return "";
           return String(r.result);
@@ -248,7 +261,7 @@ export function DualPane() {
         const transform = getTransform(transformId);
         if (!transform) return;
         try {
-          const result = await transform.fn(text);
+          const result = await transform.fn(...texts);
           updateOutput(activeTabId, result);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
@@ -259,10 +272,14 @@ export function DualPane() {
     [activeTabId, updateOutput],
   );
 
-  // Re-run transform when input or selected transform changes
+  // Re-run transform when input(s) or selected transform changes
   useEffect(() => {
-    runTransform(selectedTransformId, input);
-  }, [input, selectedTransformId, runTransform]);
+    if (inputCount > 1) {
+      runTransform(selectedTransformId, input, input2);
+    } else {
+      runTransform(selectedTransformId, input);
+    }
+  }, [input, input2, inputCount, selectedTransformId, runTransform]);
 
   const handleInputChange = (value: string | undefined) => {
     updateInput(activeTabId, value ?? "");
@@ -345,16 +362,111 @@ export function DualPane() {
   const theme = resolvedTheme === "dark" ? "typa-dark" : "typa-light";
 
   return (
-    <Allotment>
+    <Allotment key={layout} vertical={layout === "vertical"}>
       <Allotment.Pane>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border-subtle">
-            <span className="text-[11px] text-text-muted font-medium">INPUT</span>
+        {inputCount > 1 ? (
+          <Allotment key={`input-${layout}`} vertical={layout === "horizontal"}>
+            <Allotment.Pane>
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border-subtle">
+                  <span className="text-[11px] text-text-muted font-medium">INPUT A</span>
+                  {availableWidgets.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      {availableWidgets.map((w) => {
+                        const isActive = activeWidgetId === w.id;
+                        return (
+                          <button key={w.id} onClick={() => setActiveWidgetId(isActive ? null : w.id)} className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${isActive ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"}`} title={isActive ? "Switch to editor" : w.name}>
+                            {isActive ? <CodeIcon /> : <w.icon />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {activeWidget ? (
+                    <activeWidget.component input={input} onInputChange={(v) => updateInput(activeTabId, v)} theme={resolvedTheme === "dark" ? "dark" : "light"} />
+                  ) : (
+                    <MonacoEditor value={input} defaultLanguage="plaintext" theme={theme} beforeMount={defineThemes} onMount={handleInputMount} onChange={handleInputChange} options={{ ...sharedOptions, wordWrap: inputWrap ? "on" : "off" }} />
+                  )}
+                </div>
+              </div>
+            </Allotment.Pane>
+            <Allotment.Pane>
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border-subtle">
+                  <span className="text-[11px] text-text-muted font-medium">INPUT B</span>
+                  {availableWidgets.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      {availableWidgets.map((w) => {
+                        const isActive = activeWidgetId === w.id;
+                        return (
+                          <button key={w.id} onClick={() => setActiveWidgetId(isActive ? null : w.id)} className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${isActive ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"}`} title={isActive ? "Switch to editor" : w.name}>
+                            {isActive ? <CodeIcon /> : <w.icon />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  {activeWidget ? (
+                    <activeWidget.component input={input2} onInputChange={(v) => updateInput2(activeTabId, v)} theme={resolvedTheme === "dark" ? "dark" : "light"} />
+                  ) : (
+                    <MonacoEditor value={input2} defaultLanguage="plaintext" theme={theme} beforeMount={defineThemes} onChange={(v) => updateInput2(activeTabId, v ?? "")} options={{ ...sharedOptions, wordWrap: inputWrap ? "on" : "off" }} />
+                  )}
+                </div>
+              </div>
+            </Allotment.Pane>
+          </Allotment>
+        ) : (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-3 h-[30px] shrink-0 border-b border-border-subtle">
+              <span className="text-[11px] text-text-muted font-medium">INPUT</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    const next = !inputWrap;
+                    setInputWrap(next);
+                    inputEditorRef.current?.updateOptions({ wordWrap: next ? "on" : "off" });
+                  }}
+                  className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${
+                    inputWrap ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"
+                  }`}
+                  title={inputWrap ? "Disable word wrap" : "Enable word wrap"}
+                >
+                  <WrapIcon />
+                </button>
+                {availableWidgets.map((widget) => {
+                  const isActive = activeWidgetId === widget.id;
+                  return (
+                    <button
+                      key={widget.id}
+                      onClick={() => setActiveWidgetId(isActive ? null : widget.id)}
+                      className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${
+                        isActive ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"
+                      }`}
+                      title={isActive ? "Switch to editor" : widget.name}
+                    >
+                      {isActive ? <CodeIcon /> : <widget.icon />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeWidget ? (
+                <activeWidget.component
+                  input={input}
+                  onInputChange={(value) => updateInput(activeTabId, value)}
+                  theme={resolvedTheme === "dark" ? "dark" : "light"}
+                />
+              ) : (
+                <MonacoEditor value={input} defaultLanguage="plaintext" theme={theme} beforeMount={defineThemes} onMount={handleInputMount} onChange={handleInputChange} options={{ ...sharedOptions, wordWrap: inputWrap ? "on" : "off" }} />
+              )}
+            </div>
           </div>
-          <div className="flex-1">
-            <MonacoEditor value={input} defaultLanguage="plaintext" theme={theme} beforeMount={defineThemes} onMount={handleInputMount} onChange={handleInputChange} options={sharedOptions} />
-          </div>
-        </div>
+        )}
       </Allotment.Pane>
 
       <Allotment.Pane>
@@ -365,17 +477,34 @@ export function DualPane() {
               <span className="ml-1.5 font-normal text-text-faint">— {selectedTransformId === "calculator" ? "Calculator" : (getTransform(selectedTransformId)?.name ?? selectedTransformId)}</span>
             </span>
             <div className="flex items-center gap-1.5">
-              {hasViewer && (
-                <button
-                  onClick={() => setViewerMode(!viewerMode)}
-                  className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${
-                    viewerMode ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"
-                  }`}
-                  title={viewerMode ? "Switch to plain text" : "Switch to tree view"}
-                >
-                  {viewerMode ? <CodeIcon /> : <TreeIcon />}
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  const next = !outputWrap;
+                  setOutputWrap(next);
+                  outputEditorRef.current?.updateOptions({ wordWrap: next ? "on" : "off" });
+                }}
+                className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${
+                  outputWrap ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"
+                }`}
+                title={outputWrap ? "Disable word wrap" : "Enable word wrap"}
+              >
+                <WrapIcon />
+              </button>
+              {availableViewers.map((viewer) => {
+                const isActive = activeViewerId === viewer.id;
+                return (
+                  <button
+                    key={viewer.id}
+                    onClick={() => setActiveViewerId(isActive ? null : viewer.id)}
+                    className={`flex items-center justify-center w-[22px] h-[22px] rounded transition-colors ${
+                      isActive ? "text-accent bg-accent-soft" : "text-text-faint hover:text-text-muted"
+                    }`}
+                    title={isActive ? "Switch to plain text" : viewer.name}
+                  >
+                    {isActive ? <CodeIcon /> : <viewer.icon />}
+                  </button>
+                );
+              })}
               <button
                 onClick={() => window.dispatchEvent(new Event("typa:open-transform-picker"))}
                 className="text-[10px] text-text-faint hover:text-text-muted transition-colors"
@@ -384,19 +513,9 @@ export function DualPane() {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            {viewerMode && parsedJson !== null ? (
-              <div className="h-full overflow-auto p-3" style={{ backgroundColor: "var(--bg)" }}>
-                <JsonViewer
-                  value={parsedJson}
-                  theme={resolvedTheme === "dark" ? "dark" : "light"}
-                  rootName={false}
-                  defaultInspectDepth={3}
-                  enableClipboard
-                  displayDataTypes={false}
-                  style={{ backgroundColor: "transparent", fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 13 }}
-                />
-              </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activeViewer && parsedData !== null ? (
+              <activeViewer.component data={parsedData} theme={resolvedTheme === "dark" ? "dark" : "light"} />
             ) : (
               <MonacoEditor
                 value={output}
@@ -408,6 +527,7 @@ export function DualPane() {
                   ...sharedOptions,
                   readOnly: true,
                   renderLineHighlight: "none",
+                  wordWrap: outputWrap ? "on" : "off",
                 }}
               />
             )}

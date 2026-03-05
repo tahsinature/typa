@@ -10,9 +10,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "diff": "^8.0.3",
     "mathjs": "^14.0.0"
   },
   "devDependencies": {
+    "@types/diff": "^8.0.0",
     "vitest": "^3.0.0"
   }
 }

@@ -24,6 +24,7 @@ export function FileBar() {
       id: doc.id,
       label: doc.name,
       input: doc.input,
+      input2: '',
       output: doc.output,
       selectedTransformId: doc.selectedTransformId,
     });

@@ -64,6 +64,7 @@ registerTransform({
   name: 'Unix Timestamp to Date',
   description: 'Convert Unix timestamp to ISO date string',
   category: 'Web',
+  inputWidgets: ['date-picker'],
   fn: (input) => {
     const ts = parseInt(input.trim());
     if (isNaN(ts)) return 'Invalid timestamp';
@@ -77,6 +78,7 @@ registerTransform({
   name: 'Date to Unix Timestamp',
   description: 'Convert date string to Unix timestamp (seconds)',
   category: 'Web',
+  inputWidgets: ['date-picker'],
   fn: (input) => {
     const date = new Date(input.trim());
     if (isNaN(date.getTime())) return 'Invalid date';

@@ -4,6 +4,7 @@ export interface Tab {
   id: string;
   label: string;
   input: string;
+  input2: string;
   output: string;
   selectedTransformId: string | null;
 }
@@ -15,6 +16,7 @@ interface TabStore {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   updateInput: (id: string, text: string) => void;
+  updateInput2: (id: string, text: string) => void;
   updateOutput: (id: string, text: string) => void;
   setSelectedTransform: (id: string, transformId: string | null) => void;
   renameTab: (id: string, label: string) => void;
@@ -29,6 +31,7 @@ function createTab(): Tab {
     id,
     label: `Tab ${nextId - 1}`,
     input: '',
+    input2: '',
     output: '',
     selectedTransformId: 'calculator',
   };
@@ -64,6 +67,12 @@ export const useTabStore = create<TabStore>((set, get) => ({
   updateInput: (id, text) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === id ? { ...t, input: text } : t)),
+    }));
+  },
+
+  updateInput2: (id, text) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) => (t.id === id ? { ...t, input2: text } : t)),
     }));
   },
 

@@ -17,13 +17,16 @@ function applyTheme(resolved: 'dark' | 'light') {
 interface SettingsStore {
   theme: 'dark' | 'light' | 'system';
   resolvedTheme: 'dark' | 'light';
+  layout: 'horizontal' | 'vertical';
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   toggleTheme: () => void;
+  toggleLayout: () => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   theme: 'system',
   resolvedTheme: getSystemTheme(),
+  layout: 'horizontal',
 
   setTheme: (theme) => {
     const resolved = theme === 'system' ? getSystemTheme() : theme;
@@ -36,6 +39,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const next = resolvedTheme === 'dark' ? 'light' : 'dark';
     applyTheme(next);
     set({ theme: next, resolvedTheme: next });
+  },
+
+  toggleLayout: () => {
+    const { layout } = get();
+    set({ layout: layout === 'horizontal' ? 'vertical' : 'horizontal' });
   },
 }));
 

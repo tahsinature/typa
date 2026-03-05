@@ -1,10 +1,16 @@
 import { registerTransform } from './registry';
 
+const jsonViewers = [
+  { id: 'json-tree', parse: JSON.parse },
+  { id: 'table', parse: JSON.parse },
+];
+
 registerTransform({
   id: 'json-format',
   name: 'Format JSON',
   description: 'Pretty-print JSON with 2-space indentation',
   category: 'JSON',
+  viewers: jsonViewers,
   fn: (input) => JSON.stringify(JSON.parse(input), null, 2),
 });
 
@@ -13,6 +19,7 @@ registerTransform({
   name: 'Minify JSON',
   description: 'Remove all whitespace from JSON',
   category: 'JSON',
+  viewers: jsonViewers,
   fn: (input) => JSON.stringify(JSON.parse(input)),
 });
 
