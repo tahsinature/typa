@@ -5,7 +5,7 @@ import type { Tab } from './tabStore';
 export interface SavedDocument {
   id: string;
   name: string;
-  input: string;
+  inputs: string[];
   output: string;
   selectedTransformId: string | null;
   updatedAt: number;
@@ -30,6 +30,14 @@ async function getStore(): Promise<Store> {
   return store;
 }
 
+// Migrate old documents that had input/input2 fields
+function migrateDoc(raw: any): SavedDocument {
+  if (raw.inputs) return raw;
+  const inputs: string[] = [raw.input ?? ''];
+  if (raw.input2) inputs.push(raw.input2);
+  return { ...raw, inputs, input: undefined, input2: undefined };
+}
+
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
   documents: [],
   loaded: false,
@@ -37,7 +45,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   loadAll: async () => {
     try {
       const s = await getStore();
-      const docs = ((await s.get('documents')) as SavedDocument[] | null) ?? [];
+      const raw = ((await s.get('documents')) as any[] | null) ?? [];
+      const docs = raw.map(migrateDoc);
       docs.sort((a, b) => b.updatedAt - a.updatedAt);
       set({ documents: docs, loaded: true });
     } catch {
@@ -53,7 +62,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     const doc: SavedDocument = {
       id: tab.id,
       name: existing?.name ?? tab.label,
-      input: tab.input,
+      inputs: tab.inputs,
       output: tab.output,
       selectedTransformId: tab.selectedTransformId,
       updatedAt: now,

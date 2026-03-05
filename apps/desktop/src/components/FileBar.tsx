@@ -23,8 +23,7 @@ export function FileBar() {
     store.tabs.push({
       id: doc.id,
       label: doc.name,
-      input: doc.input,
-      input2: '',
+      inputs: doc.inputs,
       output: doc.output,
       selectedTransformId: doc.selectedTransformId,
     });

@@ -43,8 +43,8 @@ function defineThemes(monaco: Monaco) {
 
 function VisualDiffViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
   const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
-  const original = tab?.input ?? "";
-  const modified = tab?.input2 ?? "";
+  const original = tab?.inputs[0] ?? "";
+  const modified = tab?.inputs[1] ?? "";
 
   return (
     <DiffEditor

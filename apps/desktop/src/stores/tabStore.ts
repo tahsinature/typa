@@ -3,8 +3,7 @@ import { create } from 'zustand';
 export interface Tab {
   id: string;
   label: string;
-  input: string;
-  input2: string;
+  inputs: string[];
   output: string;
   selectedTransformId: string | null;
 }
@@ -15,8 +14,7 @@ interface TabStore {
   addTab: () => void;
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
-  updateInput: (id: string, text: string) => void;
-  updateInput2: (id: string, text: string) => void;
+  updateInput: (id: string, index: number, text: string) => void;
   updateOutput: (id: string, text: string) => void;
   setSelectedTransform: (id: string, transformId: string | null) => void;
   renameTab: (id: string, label: string) => void;
@@ -30,8 +28,7 @@ function createTab(): Tab {
   return {
     id,
     label: `Tab ${nextId - 1}`,
-    input: '',
-    input2: '',
+    inputs: [''],
     output: '',
     selectedTransformId: 'calculator',
   };
@@ -64,15 +61,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   setActiveTab: (id) => set({ activeTabId: id }),
 
-  updateInput: (id, text) => {
+  updateInput: (id, index, text) => {
     set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === id ? { ...t, input: text } : t)),
-    }));
-  },
-
-  updateInput2: (id, text) => {
-    set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === id ? { ...t, input2: text } : t)),
+      tabs: s.tabs.map((t) => {
+        if (t.id !== id) return t;
+        const inputs = [...t.inputs];
+        while (inputs.length <= index) inputs.push('');
+        inputs[index] = text;
+        return { ...t, inputs };
+      }),
     }));
   },
 
