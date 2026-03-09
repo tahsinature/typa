@@ -3,7 +3,7 @@ import { SliderIcon } from "@/components/Icons";
 import { useTabImages } from "./useTabImages";
 import { registerViewer } from "./registry";
 
-function ImageSliderViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function ImageSliderViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const { imageA, imageB } = useTabImages();
   const [position, setPosition] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,6 +78,7 @@ function ImageSliderViewer({ theme }: { data: unknown; theme: "dark" | "light" }
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "image-slider",
   name: "Slider View",
   icon: SliderIcon,

@@ -2,7 +2,7 @@ import { SplitIcon } from "@/components/Icons";
 import { useTabImages } from "./useTabImages";
 import { registerViewer } from "./registry";
 
-function ImageSplitViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function ImageSplitViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const { imageA, imageB } = useTabImages();
   const border = theme === "dark" ? "#2d2d30" : "#e5e5ea";
 
@@ -23,6 +23,7 @@ function ImageSplitViewer({ theme }: { data: unknown; theme: "dark" | "light" })
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "image-split",
   name: "Split View",
   icon: SplitIcon,

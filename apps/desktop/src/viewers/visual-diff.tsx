@@ -41,7 +41,7 @@ function defineThemes(monaco: Monaco) {
   });
 }
 
-function VisualDiffViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function VisualDiffViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const original = tab?.inputs[0] ?? "";
   const modified = tab?.inputs[1] ?? "";
@@ -79,6 +79,7 @@ function VisualDiffViewer({ theme }: { data: unknown; theme: "dark" | "light" })
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "visual-diff",
   name: "Visual Diff",
   icon: SideBySideIcon,

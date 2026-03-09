@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-export interface InputWidgetConfig {
+export interface InputViewConfig {
   id: string;
   name: string;
   icon: ComponentType;
@@ -11,13 +11,19 @@ export interface InputWidgetConfig {
   }>;
 }
 
-const widgets = new Map<string, InputWidgetConfig>();
+const inputViews = new Map<string, InputViewConfig>();
 
-export function registerInputWidget(widget: InputWidgetConfig) {
-  widgets.set(widget.id, widget);
+export function registerInputView(view: InputViewConfig) {
+  inputViews.set(view.id, view);
 }
 
-export function getInputWidgetsForTransform(widgetIds: string[] | undefined): InputWidgetConfig[] {
-  if (!widgetIds) return [];
-  return widgetIds.map((id) => widgets.get(id)).filter(Boolean) as InputWidgetConfig[];
+export function getInputViewsForTransform(viewIds: string[]): InputViewConfig[] {
+  return viewIds
+    .map((id) => inputViews.get(id))
+    .filter(Boolean) as InputViewConfig[];
 }
+
+/** @deprecated Use registerInputView */
+export const registerInputWidget = registerInputView;
+/** @deprecated Use InputViewConfig */
+export type InputWidgetConfig = InputViewConfig;

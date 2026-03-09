@@ -7,10 +7,8 @@ registerTransform({
   description: 'Compare two texts and show differences',
   category: 'Diff',
   inputs: 2,
-  viewers: [
-    { id: 'diff', parse: (output) => output },
-    { id: 'visual-diff', parse: (output) => output },
-  ],
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output', 'diff', 'visual-diff'],
   fn: (a, b) => {
     const patch = createTwoFilesPatch('Input A', 'Input B', a ?? '', b ?? '');
     return patch;

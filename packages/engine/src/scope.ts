@@ -1,6 +1,7 @@
 export class Scope {
   private mathScope: Record<string, unknown> = {};
   private lineResults: (number | null)[] = [];
+  private percentVars: Map<string, string> = new Map();
 
   getMathScope(): Record<string, unknown> {
     return this.mathScope;
@@ -30,8 +31,21 @@ export class Scope {
     return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
   }
 
+  setPercentVar(name: string, value: string): void {
+    this.percentVars.set(name, value);
+  }
+
+  removePercentVar(name: string): void {
+    this.percentVars.delete(name);
+  }
+
+  getPercentVars(): Map<string, string> {
+    return this.percentVars;
+  }
+
   reset(): void {
     this.mathScope = {};
     this.lineResults = [];
+    this.percentVars.clear();
   }
 }

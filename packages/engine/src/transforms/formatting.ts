@@ -16,6 +16,8 @@ registerTransform({
   name: 'Sort Lines (A-Z)',
   description: 'Sort lines alphabetically ascending',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -28,6 +30,8 @@ registerTransform({
   name: 'Sort Lines (Z-A)',
   description: 'Sort lines alphabetically descending',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -40,6 +44,8 @@ registerTransform({
   name: 'Reverse Lines',
   description: 'Reverse the order of lines',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => input.split('\n').reverse().join('\n'),
 });
 
@@ -48,6 +54,8 @@ registerTransform({
   name: 'Unique Lines',
   description: 'Remove duplicate lines',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => [...new Set(input.split('\n'))].join('\n'),
 });
 
@@ -56,6 +64,8 @@ registerTransform({
   name: 'Trim Lines',
   description: 'Trim whitespace from each line',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -68,6 +78,8 @@ registerTransform({
   name: 'Remove Empty Lines',
   description: 'Remove all blank lines',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -82,6 +94,8 @@ registerTransform({
   name: 'UPPERCASE',
   description: 'Convert all text to uppercase',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => input.toUpperCase(),
 });
 
@@ -90,6 +104,8 @@ registerTransform({
   name: 'lowercase',
   description: 'Convert all text to lowercase',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => input.toLowerCase(),
 });
 
@@ -98,6 +114,8 @@ registerTransform({
   name: 'Title Case',
   description: 'Capitalize the first letter of each word',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input.replace(
       /\b\w/g,
@@ -110,6 +128,8 @@ registerTransform({
   name: 'camelCase',
   description: 'Convert to camelCase',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -131,6 +151,8 @@ registerTransform({
   name: 'PascalCase',
   description: 'Convert to PascalCase',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -147,6 +169,8 @@ registerTransform({
   name: 'snake_case',
   description: 'Convert to snake_case',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')
@@ -163,6 +187,8 @@ registerTransform({
   name: 'kebab-case',
   description: 'Convert to kebab-case',
   category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     input
       .split('\n')

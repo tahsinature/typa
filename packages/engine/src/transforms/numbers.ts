@@ -19,6 +19,8 @@ registerTransform({
   name: 'Hex to Decimal',
   description: 'Convert hexadecimal numbers to decimal',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line.replace(/^0x/i, ''), 16);
@@ -31,6 +33,8 @@ registerTransform({
   name: 'Decimal to Hex',
   description: 'Convert decimal numbers to hexadecimal',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line, 10);
@@ -43,6 +47,8 @@ registerTransform({
   name: 'Decimal to Binary',
   description: 'Convert decimal numbers to binary',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line, 10);
@@ -55,6 +61,8 @@ registerTransform({
   name: 'Binary to Decimal',
   description: 'Convert binary numbers to decimal',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line.replace(/^0b/i, ''), 2);
@@ -67,6 +75,8 @@ registerTransform({
   name: 'Decimal to Octal',
   description: 'Convert decimal numbers to octal',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line, 10);
@@ -79,6 +89,8 @@ registerTransform({
   name: 'Octal to Decimal',
   description: 'Convert octal numbers to decimal',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const n = parseInt(line.replace(/^0o/i, ''), 8);
@@ -91,6 +103,8 @@ registerTransform({
   name: 'Hex Color to RGB',
   description: 'Convert hex color (#ff5733) to rgb()',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const match = line.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -105,6 +119,8 @@ registerTransform({
   name: 'RGB to Hex Color',
   description: 'Convert rgb(r, g, b) to hex color',
   category: 'Numbers',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) =>
     mapLines(input, (line) => {
       const match = line.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);

@@ -13,6 +13,8 @@ registerTransform({
   name: 'SHA-1',
   description: 'Compute SHA-1 hash',
   category: 'Hashing',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => hash('SHA-1', input),
 });
 
@@ -21,6 +23,8 @@ registerTransform({
   name: 'SHA-256',
   description: 'Compute SHA-256 hash',
   category: 'Hashing',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => hash('SHA-256', input),
 });
 
@@ -29,6 +33,8 @@ registerTransform({
   name: 'SHA-384',
   description: 'Compute SHA-384 hash',
   category: 'Hashing',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => hash('SHA-384', input),
 });
 
@@ -37,5 +43,7 @@ registerTransform({
   name: 'SHA-512',
   description: 'Compute SHA-512 hash',
   category: 'Hashing',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => hash('SHA-512', input),
 });

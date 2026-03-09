@@ -3,7 +3,7 @@ import { FadeIcon } from "@/components/Icons";
 import { useTabImages } from "./useTabImages";
 import { registerViewer } from "./registry";
 
-function ImageFadeViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function ImageFadeViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const { imageA, imageB } = useTabImages();
   const [opacity, setOpacity] = useState(0.5);
   const isDark = theme === "dark";
@@ -43,6 +43,7 @@ function ImageFadeViewer({ theme }: { data: unknown; theme: "dark" | "light" }) 
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "image-fade",
   name: "Fade View",
   icon: FadeIcon,

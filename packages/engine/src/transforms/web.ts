@@ -5,6 +5,8 @@ registerTransform({
   name: 'JWT Decode',
   description: 'Decode a JWT token (header + payload)',
   category: 'Web',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => {
     const parts = input.trim().split('.');
     if (parts.length !== 3) return 'Invalid JWT: expected 3 parts';
@@ -25,6 +27,8 @@ registerTransform({
   name: 'Query String to JSON',
   description: 'Parse URL query string into JSON',
   category: 'Web',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => {
     const cleaned = input.trim().replace(/^\?/, '');
     const params = new URLSearchParams(cleaned);
@@ -41,6 +45,8 @@ registerTransform({
   name: 'JSON to Query String',
   description: 'Convert JSON object to URL query string',
   category: 'Web',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: (input) => {
     const obj = JSON.parse(input);
     const params = new URLSearchParams();
@@ -56,6 +62,8 @@ registerTransform({
   name: 'Generate UUID',
   description: 'Generate a random UUID v4 (ignores input)',
   category: 'Web',
+  inputViews: ['raw-input'],
+  outputViews: ['raw-output'],
   fn: () => crypto.randomUUID(),
 });
 
@@ -64,7 +72,8 @@ registerTransform({
   name: 'Unix Timestamp to Date',
   description: 'Convert Unix timestamp to ISO date string',
   category: 'Web',
-  inputWidgets: ['date-picker'],
+  inputViews: ['raw-input', 'date-picker'],
+  outputViews: ['raw-output'],
   fn: (input) => {
     const ts = parseInt(input.trim());
     if (isNaN(ts)) return 'Invalid timestamp';
@@ -78,7 +87,8 @@ registerTransform({
   name: 'Date to Unix Timestamp',
   description: 'Convert date string to Unix timestamp (seconds)',
   category: 'Web',
-  inputWidgets: ['date-picker'],
+  inputViews: ['raw-input', 'date-picker'],
+  outputViews: ['raw-output'],
   fn: (input) => {
     const date = new Date(input.trim());
     if (isNaN(date.getTime())) return 'Invalid date';

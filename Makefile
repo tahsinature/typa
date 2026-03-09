@@ -26,3 +26,7 @@ size:
 # Clean Rust build artifacts
 clean:
 	cd apps/desktop/src-tauri && cargo clean
+
+# Open dev server in browser
+open:
+	open http://localhost:1420

@@ -14,19 +14,29 @@ function applyTheme(resolved: 'dark' | 'light') {
   }
 }
 
+export type PaletteStyle = 'raycast' | 'linear' | 'arc';
+
 interface SettingsStore {
   theme: 'dark' | 'light' | 'system';
   resolvedTheme: 'dark' | 'light';
   layout: 'horizontal' | 'vertical';
+  fontSize: number;
+  paletteStyle: PaletteStyle;
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   toggleTheme: () => void;
   toggleLayout: () => void;
+  setPaletteStyle: (style: PaletteStyle) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   theme: 'system',
   resolvedTheme: getSystemTheme(),
   layout: 'horizontal',
+  fontSize: 13,
+  paletteStyle: 'raycast',
 
   setTheme: (theme) => {
     const resolved = theme === 'system' ? getSystemTheme() : theme;
@@ -41,10 +51,24 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ theme: next, resolvedTheme: next });
   },
 
+  setPaletteStyle: (style) => set({ paletteStyle: style }),
+
   toggleLayout: () => {
     const { layout } = get();
     set({ layout: layout === 'horizontal' ? 'vertical' : 'horizontal' });
   },
+
+  zoomIn: () => {
+    const { fontSize } = get();
+    if (fontSize < 32) set({ fontSize: fontSize + 1 });
+  },
+
+  zoomOut: () => {
+    const { fontSize } = get();
+    if (fontSize > 8) set({ fontSize: fontSize - 1 });
+  },
+
+  resetZoom: () => set({ fontSize: 13 }),
 }));
 
 // React to system theme changes

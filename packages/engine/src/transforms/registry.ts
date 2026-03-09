@@ -25,7 +25,7 @@ export function searchTransforms(query: string): Transform[] {
   );
 }
 
-export function getCategories(): string[] {
+export function getCategories(): import('../types').TransformCategory[] {
   const cats = new Set(getAllTransforms().map((t) => t.category));
   return Array.from(cats).sort();
 }

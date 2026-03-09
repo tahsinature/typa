@@ -1,30 +1,23 @@
 import type { ComponentType } from "react";
-import type { ViewerRef } from "@typa/engine";
 
-export interface ViewerConfig {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface OutputViewConfig<T = any> {
   id: string;
   name: string;
   icon: ComponentType;
-  component: ComponentType<{ data: unknown; theme: "dark" | "light" }>;
+  parse: (output: string) => T;
+  component: ComponentType<{ data: T; theme: "dark" | "light" }>;
 }
 
-export interface ResolvedViewer extends ViewerConfig {
-  parse: (output: string) => unknown;
+const outputViews = new Map<string, OutputViewConfig>();
+
+export function registerOutputView<T>(view: OutputViewConfig<T>) {
+  outputViews.set(view.id, view);
 }
 
-const viewers = new Map<string, ViewerConfig>();
-
-export function registerViewer(viewer: ViewerConfig) {
-  viewers.set(viewer.id, viewer);
+export function getOutputViewsForTransform(viewIds: string[]): OutputViewConfig[] {
+  return viewIds.map((id) => outputViews.get(id)).filter(Boolean) as OutputViewConfig[];
 }
 
-export function getViewersForTransform(viewerRefs: ViewerRef[] | undefined): ResolvedViewer[] {
-  if (!viewerRefs) return [];
-  return viewerRefs
-    .map((ref) => {
-      const config = viewers.get(ref.id);
-      if (!config) return null;
-      return { ...config, parse: ref.parse };
-    })
-    .filter(Boolean) as ResolvedViewer[];
-}
+/** @deprecated Use registerOutputView */
+export const registerViewer = registerOutputView;

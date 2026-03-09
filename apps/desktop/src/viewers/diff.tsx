@@ -75,8 +75,8 @@ const colors = {
   },
 };
 
-function DiffViewer({ data, theme }: { data: unknown; theme: "dark" | "light" }) {
-  const lines = useMemo(() => parseDiff(data as string), [data]);
+function DiffViewer({ data, theme }: { data: string; theme: "dark" | "light" }) {
+  const lines = useMemo(() => parseDiff(data), [data]);
   const c = colors[theme];
 
   if (lines.length === 0) {
@@ -169,6 +169,7 @@ function DiffViewer({ data, theme }: { data: unknown; theme: "dark" | "light" })
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "diff",
   name: "Diff View",
   icon: DiffIcon,

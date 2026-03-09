@@ -3,7 +3,7 @@ import { ImageDetailsTable } from "./ImageDetailsTable";
 import { useTabImages } from "./useTabImages";
 import { registerViewer } from "./registry";
 
-function ImageDetailsViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function ImageDetailsViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const { imageA, imageB } = useTabImages();
 
   const images = [
@@ -23,6 +23,7 @@ function ImageDetailsViewer({ theme }: { data: unknown; theme: "dark" | "light" 
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "image-details",
   name: "File Details",
   icon: InfoIcon,

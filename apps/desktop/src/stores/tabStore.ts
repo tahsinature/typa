@@ -23,6 +23,14 @@ interface TabStore {
 
 let nextId = 1;
 
+function getLastTransformId(): string {
+  try {
+    return localStorage.getItem('typa:lastTransformId') ?? 'calculator';
+  } catch {
+    return 'calculator';
+  }
+}
+
 function createTab(): Tab {
   const id = `tab-${nextId++}`;
   return {
@@ -30,7 +38,7 @@ function createTab(): Tab {
     label: `Tab ${nextId - 1}`,
     inputs: [''],
     output: '',
-    selectedTransformId: 'calculator',
+    selectedTransformId: getLastTransformId(),
   };
 }
 
@@ -80,6 +88,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
   },
 
   setSelectedTransform: (id, transformId) => {
+    if (transformId) {
+      try { localStorage.setItem('typa:lastTransformId', transformId); } catch {}
+    }
     set((s) => ({
       tabs: s.tabs.map((t) =>
         t.id === id ? { ...t, selectedTransformId: transformId } : t,

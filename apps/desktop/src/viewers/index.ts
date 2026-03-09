@@ -1,4 +1,7 @@
+import "./raw-output";
+import "./validation";
 import "./json-tree";
+import "./json-diagram";
 import "./table";
 import "./diff";
 import "./visual-diff";
@@ -7,6 +10,12 @@ import "./image-fade";
 import "./image-slider";
 import "./image-highlight";
 import "./image-details";
+import "./mermaid";
+import "./counter";
+import "./code-image";
+// import "./image-canvas-fabric";
+import "./image-canvas-excalidraw";
+// import "./image-canvas-tldraw";
 
-export { getViewersForTransform, registerViewer } from "./registry";
-export type { ViewerConfig, ResolvedViewer } from "./registry";
+export { getOutputViewsForTransform, registerOutputView } from "./registry";
+export type { OutputViewConfig } from "./registry";

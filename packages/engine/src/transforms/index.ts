@@ -7,6 +7,10 @@ import './web';
 import './numbers';
 import './diff';
 import './image-diff';
+import './mermaid';
+import './code-image';
+import './text-stats';
+import './image-canvas';
 
 // Re-export registry
 export {

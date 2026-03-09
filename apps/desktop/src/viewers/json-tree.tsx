@@ -19,6 +19,7 @@ function JsonTreeViewer({ data, theme }: { data: unknown; theme: "dark" | "light
 }
 
 registerViewer({
+  parse: (output) => JSON.parse(output),
   id: "json-tree",
   name: "Tree View",
   icon: TreeIcon,

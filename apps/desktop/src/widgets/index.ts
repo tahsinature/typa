@@ -1,5 +1,7 @@
+import "./raw-input";
 import "./date-picker";
 import "./image-input";
+import "./multi-image-input";
 
-export { getInputWidgetsForTransform, registerInputWidget } from "./registry";
-export type { InputWidgetConfig } from "./registry";
+export { getInputViewsForTransform, registerInputView } from "./registry";
+export type { InputViewConfig } from "./registry";

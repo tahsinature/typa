@@ -68,7 +68,7 @@ function computeDiff(
   return { canvas: output, diffCount, totalPixels };
 }
 
-function ImageHighlightViewer({ theme }: { data: unknown; theme: "dark" | "light" }) {
+function ImageHighlightViewer({ theme }: { data: string; theme: "dark" | "light" }) {
   const { imageA, imageB } = useTabImages();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [diffPct, setDiffPct] = useState<number | null>(null);
@@ -128,6 +128,7 @@ function ImageHighlightViewer({ theme }: { data: unknown; theme: "dark" | "light
 }
 
 registerViewer({
+  parse: (output) => output,
   id: "image-highlight",
   name: "Highlight Diff",
   icon: HighlightIcon,

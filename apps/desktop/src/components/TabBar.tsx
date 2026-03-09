@@ -1,274 +1,69 @@
-import { useState, useRef, useEffect } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { useTabStore, type Tab } from '@/stores/tabStore';
+import { useTabStore } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
-import { CloseIcon, DragHandleIcon, PlusIcon, LayoutHorizontalIcon, LayoutVerticalIcon } from '@/components/Icons';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { LayoutHorizontalIcon, LayoutVerticalIcon } from '@/components/Icons';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+} from '@/components/ui/dropdown-menu';
 
-interface SortableTabProps {
-  tab: Tab;
-  isActive: boolean;
-  canClose: boolean;
-  isEditing: boolean;
-  onSelect: () => void;
-  onClose: () => void;
-  onStartEdit: () => void;
-  onRename: (name: string) => void;
-  onCancelEdit: () => void;
-}
-
-function SortableTab({
-  tab,
-  isActive,
-  canClose,
-  isEditing,
-  onSelect,
-  onClose,
-  onStartEdit,
-  onRename,
-  onCancelEdit,
-}: SortableTabProps) {
-  const [editValue, setEditValue] = useState(tab.label);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: tab.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 10 : undefined,
-    opacity: isDragging ? 0.4 : undefined,
-  };
-
-  useEffect(() => {
-    if (isEditing) {
-      setEditValue(tab.label);
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 0);
-    }
-  }, [isEditing, tab.label]);
-
-  const handleSubmit = () => {
-    const trimmed = editValue.trim();
-    if (trimmed && trimmed !== tab.label) {
-      onRename(trimmed);
-    }
-    onCancelEdit();
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={onSelect}
-      onDoubleClick={(e) => {
-        e.preventDefault();
-        onStartEdit();
-      }}
-      onAuxClick={(e) => {
-        if (e.button === 1) onClose();
-      }}
-      data-active={isActive}
-      className={`no-drag group relative flex items-center gap-1 h-full px-3 text-[12px] whitespace-nowrap cursor-default select-none transition-colors ${
-        isActive
-          ? 'text-text'
-          : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover/50'
-      }`}
-    >
-      {/* Active indicator — bottom border like native tabs */}
-      {isActive && (
-        <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-accent rounded-full" />
-      )}
-
-      {isEditing ? (
-        <input
-          ref={inputRef}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleSubmit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSubmit();
-            if (e.key === 'Escape') onCancelEdit();
-            e.stopPropagation();
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="bg-bg-input border border-accent/50 rounded px-1.5 py-0.5 text-[12px] text-text focus:outline-none w-24"
-        />
-      ) : (
-        <span className="truncate max-w-[140px]">{tab.label}</span>
-      )}
-
-      {canClose && !isEditing && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          className={`flex items-center justify-center w-[18px] h-[18px] rounded-sm transition-all ${
-            isActive
-              ? 'opacity-50 hover:opacity-100 hover:bg-bg-active'
-              : 'opacity-0 group-hover:opacity-50 hover:!opacity-100 hover:bg-bg-active'
-          }`}
-        >
-          <CloseIcon />
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface TabBarProps {
-  editingTabId: string | null;
-  onEditingTabIdChange: (id: string | null) => void;
-}
-
-export function TabBar({ editingTabId, onEditingTabIdChange }: TabBarProps) {
-  const tabs = useTabStore((s) => s.tabs);
-  const activeTabId = useTabStore((s) => s.activeTabId);
-  const addTab = useTabStore((s) => s.addTab);
-  const closeTab = useTabStore((s) => s.closeTab);
-  const setActiveTab = useTabStore((s) => s.setActiveTab);
-  const renameTab = useTabStore((s) => s.renameTab);
-  const reorderTabs = useTabStore((s) => s.reorderTabs);
-  const renameDocument = useDocumentStore((s) => s.rename);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 },
-    }),
-  );
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const fromIndex = tabs.findIndex((t) => t.id === active.id);
-    const toIndex = tabs.findIndex((t) => t.id === over.id);
-    if (fromIndex !== -1 && toIndex !== -1) {
-      reorderTabs(fromIndex, toIndex);
-    }
-  };
-
-  const handleRenameTab = (tabId: string, name: string) => {
-    renameTab(tabId, name);
-    const docs = useDocumentStore.getState().documents;
-    if (docs.some((d) => d.id === tabId)) {
-      renameDocument(tabId, name);
-    }
-  };
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const activeEl = el.querySelector('[data-active="true"]');
-    if (activeEl) {
-      activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
-  }, [activeTabId]);
-
-  return (
-    <div className="flex items-center h-[38px] bg-bg shrink-0 border-b border-border-subtle">
-      {/* Traffic light spacer — draggable */}
-      <div
-        className="w-[78px] h-full shrink-0"
-        onMouseDown={() => getCurrentWindow().startDragging()}
-      />
-
-      {/* Tabs */}
-      <div ref={scrollRef} className="flex items-center h-full overflow-x-auto scrollbar-none shrink-0">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={tabs.map((t) => t.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            {tabs.map((tab) => (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                isActive={tab.id === activeTabId}
-                canClose={tabs.length > 1}
-                isEditing={editingTabId === tab.id}
-                onSelect={() => setActiveTab(tab.id)}
-                onClose={() => closeTab(tab.id)}
-                onStartEdit={() => onEditingTabIdChange(tab.id)}
-                onRename={(name) => handleRenameTab(tab.id, name)}
-                onCancelEdit={() => onEditingTabIdChange(null)}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
-      </div>
-
-      {/* Remaining space */}
-      <div className="flex-1 h-full" />
-
-      {/* Layout toggle */}
-      <LayoutToggle />
-
-      {/* Drag handle */}
-      <button
-        onMouseDown={(e) => { e.preventDefault(); getCurrentWindow().startDragging(); }}
-        className="flex items-center justify-center w-[38px] h-[38px] text-text-faint hover:text-text-muted transition-colors shrink-0 cursor-grab active:cursor-grabbing"
-        title="Drag to move window"
-      >
-        <DragHandleIcon />
-      </button>
-
-      {/* New tab button */}
-      <button
-        onClick={() => addTab()}
-        className="flex items-center justify-center w-[38px] h-[38px] text-text-muted hover:text-text-secondary transition-colors shrink-0"
-        title="New tab (⌘T)"
-      >
-        <PlusIcon />
-      </button>
-    </div>
-  );
-}
-
-function LayoutToggle() {
+export function TabBar() {
   const layout = useSettingsStore((s) => s.layout);
   const toggleLayout = useSettingsStore((s) => s.toggleLayout);
-  const isVertical = layout === 'vertical';
+  const theme = useSettingsStore((s) => s.resolvedTheme);
+  const toggleTheme = useSettingsStore((s) => s.toggleTheme);
 
   return (
-    <button
-      onClick={toggleLayout}
-      className="flex items-center justify-center w-[38px] h-[38px] text-text-faint hover:text-text-muted transition-colors shrink-0"
-      title={isVertical ? 'Switch to side-by-side' : 'Switch to top-bottom'}
-    >
-      {isVertical ? <LayoutHorizontalIcon /> : <LayoutVerticalIcon />}
-    </button>
+    <div className="flex items-center h-[36px] bg-bg-titlebar shrink-0 border-b border-border-subtle">
+      {/* Traffic lights */}
+      <div className="w-[78px] h-full shrink-0 drag-region" data-tauri-drag-region />
+
+      {/* Drag region fills center */}
+      <div className="flex-1 h-full drag-region" data-tauri-drag-region />
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 px-2 shrink-0 no-drag">
+        <Tb onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })); }} tip="Switch transform ⌘K">
+          <TransformIcon />
+        </Tb>
+
+        <Tb onClick={toggleLayout} tip={layout === 'vertical' ? 'Side-by-side' : 'Stacked'}>
+          {layout === 'vertical' ? <LayoutHorizontalIcon /> : <LayoutVerticalIcon />}
+        </Tb>
+        <Tb onClick={toggleTheme} tip={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </Tb>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center justify-center w-[26px] h-[26px] rounded-md text-text-faint hover:text-text-muted hover:bg-bg-hover/50 transition-colors cursor-pointer">
+              <MoreIcon />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { const t = useTabStore.getState().tabs.find((t) => t.id === useTabStore.getState().activeTabId); if (t) useDocumentStore.getState().save(t); }}>Save<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 }
+
+function Tb({ onClick, tip, children }: { onClick: () => void; tip: string; children: React.ReactNode }) {
+  return <Tooltip><TooltipTrigger asChild><button onClick={onClick} className="flex items-center justify-center w-[26px] h-[26px] rounded-md text-text-faint hover:text-text-muted hover:bg-bg-hover/50 transition-colors cursor-pointer">{children}</button></TooltipTrigger><TooltipContent>{tip}</TooltipContent></Tooltip>;
+}
+
+function TransformIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />
+    </svg>
+  );
+}
+
+function SunIcon() { return <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.5.5 0 01.5.5v1a.5.5 0 01-1 0v-1A.5.5 0 018 1zm0 10a3 3 0 100-6 3 3 0 000 6zm0-1a2 2 0 110-4 2 2 0 010 4zm5.657-8.657a.5.5 0 010 .707l-.707.707a.5.5 0 11-.707-.707l.707-.707a.5.5 0 01.707 0zM3.757 11.243a.5.5 0 010 .707l-.707.707a.5.5 0 11-.707-.707l.707-.707a.5.5 0 01.707 0zM15 8a.5.5 0 01-.5.5h-1a.5.5 0 010-1h1A.5.5 0 0115 8zM3.5 8a.5.5 0 01-.5.5h-1a.5.5 0 010-1h1a.5.5 0 01.5.5zm9.193 4.243a.5.5 0 01-.707 0l-.707-.707a.5.5 0 01.707-.707l.707.707a.5.5 0 010 .707zM3.757 4.757a.5.5 0 01-.707 0l-.707-.707a.5.5 0 11.707-.707l.707.707a.5.5 0 010 .707zM8 13a.5.5 0 01.5.5v1a.5.5 0 01-1 0v-1A.5.5 0 018 13z" /></svg>; }
+function MoonIcon() { return <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M6 .278a.768.768 0 01.08.858 7.21 7.21 0 00-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 01.81.316.733.733 0 01-.031.893A8.349 8.349 0 018.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 016 .278z" /></svg>; }
+function MoreIcon() { return <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M3 9.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" /></svg>; }

@@ -116,6 +116,39 @@ export function WrapIcon() {
   );
 }
 
+export function FullscreenIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" />
+    </svg>
+  );
+}
+
+export function ExitFullscreenIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" />
+    </svg>
+  );
+}
+
+export function PasteIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.5 1h-5A1.5 1.5 0 004 2.5V3H2.5A1.5 1.5 0 001 4.5v10A1.5 1.5 0 002.5 16h8a1.5 1.5 0 001.5-1.5V13h1.5a1.5 1.5 0 001.5-1.5v-7L11.5 1z" />
+      <path d="M12 13v1.5a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-10a.5.5 0 01.5-.5H4" />
+    </svg>
+  );
+}
+
+export function ClearIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <path d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4M12.667 4v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4" />
+    </svg>
+  );
+}
+
 export function ImageIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -161,6 +194,14 @@ export function InfoIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
       <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1a6 6 0 110 12A6 6 0 018 2zm-.5 3a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM7 7.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v4a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-4z" />
+    </svg>
+  );
+}
+
+export function CounterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9h3m-1.5-1.5v3M10 9h1m3-1.5v3M9 15.5h6M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" />
     </svg>
   );
 }

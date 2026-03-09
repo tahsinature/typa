@@ -1,59 +1,59 @@
 @import "tailwindcss";
 
-/* ── Dark theme (default) — native macOS inspired ── */
+/* ── Dark theme (default) — refined dark ── */
 :root {
-  --bg: #212226;
-  --bg-secondary: #282a2f;
-  --bg-elevated: #2e3035;
+  --bg: #1e1f23;
+  --bg-secondary: #252529;
+  --bg-elevated: #2c2d33;
   --bg-hover: #2f3238;
   --bg-active: #383b42;
-  --bg-titlebar: #2b2d32;
-  --bg-sidebar: #212226;
+  --bg-titlebar: #232428;
+  --bg-sidebar: #1e1f23;
   --bg-input: #35373d;
 
-  --text: #cccccc;
-  --text-secondary: #a0a0a0;
-  --text-muted: #6e6e6e;
-  --text-faint: #4a4a4a;
+  --text: #d4d4d4;
+  --text-secondary: #a8a8a8;
+  --text-muted: #6e6e73;
+  --text-faint: #48484d;
 
-  --cl-accent: #007aff;
-  --cl-accent-soft: rgba(0, 122, 255, 0.15);
-  --cl-accent-hover: #0066d6;
-  --cl-result: #32d74b;
-  --cl-danger: #ff453a;
+  --cl-accent: #4d9fff;
+  --cl-accent-soft: rgba(77, 159, 255, 0.12);
+  --cl-accent-hover: #3d8ce6;
+  --cl-result: #34d058;
+  --cl-danger: #f85149;
 
-  --cl-border: #3c3c3c;
-  --cl-border-subtle: #2d2d30;
+  --cl-border: #3a3a40;
+  --cl-border-subtle: #2a2a30;
 
   --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Light theme ── */
 [data-theme="light"] {
-  --bg: #ffffff;
-  --bg-secondary: #f5f5f5;
+  --bg: #fafafa;
+  --bg-secondary: #f2f2f4;
   --bg-elevated: #ffffff;
-  --bg-hover: #e5e5e5;
-  --bg-active: #d4d4d4;
-  --bg-titlebar: #e8e8e8;
-  --bg-sidebar: #f3f3f3;
+  --bg-hover: #e8e8ec;
+  --bg-active: #dcdce0;
+  --bg-titlebar: #ededf0;
+  --bg-sidebar: #f5f5f7;
   --bg-input: #ffffff;
 
   --text: #1d1d1f;
-  --text-secondary: #636366;
+  --text-secondary: #48484a;
   --text-muted: #8e8e93;
-  --text-faint: #aeaeb2;
+  --text-faint: #b4b4b8;
 
-  --cl-accent: #007aff;
-  --cl-accent-soft: rgba(0, 122, 255, 0.1);
-  --cl-accent-hover: #0066d6;
-  --cl-result: #28a745;
+  --cl-accent: #0071e3;
+  --cl-accent-soft: rgba(0, 113, 227, 0.08);
+  --cl-accent-hover: #005ec4;
+  --cl-result: #248a3d;
   --cl-danger: #ff3b30;
 
-  --cl-border: #d1d1d6;
+  --cl-border: #d2d2d7;
   --cl-border-subtle: #e5e5ea;
 
-  --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
 }
 
 /* ── Tailwind theme mapping ── */
@@ -120,7 +120,6 @@ textarea, input, .monaco-editor, [contenteditable] {
   padding-right: 8px !important;
 }
 
-
 /* ── Monaco result decorations ── */
 .result-decoration {
   color: var(--cl-result) !important;
@@ -130,8 +129,8 @@ textarea, input, .monaco-editor, [contenteditable] {
 
 /* ── macOS-style scrollbars ── */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -174,11 +173,110 @@ textarea:focus {
 
 /* ── Smooth allotment sash ── */
 .sash-container .sash {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.2s ease;
 }
 .sash-container .sash::before {
   background-color: var(--cl-border-subtle) !important;
 }
 .sash-container .sash:hover::before {
-  background-color: var(--cl-border) !important;
+  background-color: var(--cl-accent) !important;
+  opacity: 0.4;
+}
+
+/* ── Radix / shadcn animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes zoomIn95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in-0 {
+  animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn95;
+}
+
+.slide-in-from-top-2 {
+  animation-name: slideDown;
+}
+
+/* ── Command palette overlay ── */
+@keyframes palette-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes palette-overlay-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Command palette content ── */
+@keyframes palette-content-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+}
+@keyframes palette-content-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.97) translateY(4px);
+  }
+}
+
+.palette-overlay[data-state="open"] {
+  animation: palette-overlay-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.palette-overlay[data-state="closed"] {
+  animation: palette-overlay-out 150ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.palette-content[data-state="open"] {
+  animation: palette-content-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.palette-content[data-state="closed"] {
+  animation: palette-content-out 150ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+
+/* ── JSON diagram search highlights (scoped to viewer) ── */
+.json-diagram foreignObject.searched {
+  outline: 2px solid var(--cl-accent);
+  outline-offset: -1px;
+  border-radius: 4px;
+}
+.json-diagram .highlight {
+  outline: 2px solid #f59e0b;
+  outline-offset: -1px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
 }

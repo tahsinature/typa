@@ -21,14 +21,8 @@ registerTransform({
   description: 'Compare two images visually',
   category: 'Image',
   inputs: 2,
-  inputWidgets: ['image-input'],
-  viewers: [
-    { id: 'image-split', parse: (o) => o },
-    { id: 'image-fade', parse: (o) => o },
-    { id: 'image-slider', parse: (o) => o },
-    { id: 'image-highlight', parse: (o) => o },
-    { id: 'image-details', parse: (o) => JSON.parse(o) },
-  ],
+  inputViews: ['raw-input', 'image-input'],
+  outputViews: ['raw-output', 'image-split', 'image-fade', 'image-slider', 'image-highlight', 'image-details'],
   fn: (a, b) => {
     if (!a && !b) return 'Drop or paste images in both inputs';
     if (!a) return 'Image A is missing';
