@@ -200,7 +200,7 @@ function PaletteShell({
         />
         <DialogPrimitive.Content
           className="palette-content fixed top-[50%] left-[50%] z-50 outline-none"
-          style={{ width, maxWidth: "calc(100vw - 2rem)" }}
+          style={{ width, maxWidth: "calc(100vw - 2rem)", maxHeight: "calc(100vh - 4rem)" }}
           aria-describedby={undefined}
           data-state={open ? "open" : "closed"}
           onAnimationEnd={(e) => {
@@ -241,9 +241,9 @@ function RaycastPalette({ open, onOpenChange, onSelect }: PaletteProps) {
       >
         <SearchInput />
 
-        <div className="flex" style={{ height: 360 }}>
+        <div className="flex" style={{ height: "min(360px, calc(100vh - 10rem))" }}>
           {/* List */}
-          <CommandPrimitive.List ref={listRef} className="w-[300px] overflow-y-auto overflow-x-hidden scroll-py-1 border-r border-white/[0.06] scrollbar-none">
+          <CommandPrimitive.List ref={listRef} className="w-[300px] min-w-0 shrink overflow-y-auto overflow-x-hidden scroll-py-1 border-r border-white/[0.06] scrollbar-none">
             <CommandPrimitive.Empty className="py-10 text-center text-[13px] text-text-faint">
               No transforms found.
             </CommandPrimitive.Empty>
@@ -353,7 +353,7 @@ function LinearPalette({ open, onOpenChange, onSelect }: PaletteProps) {
       >
         <SearchInput />
 
-        <CommandPrimitive.List ref={listRef} className="max-h-[400px] overflow-y-auto overflow-x-hidden scroll-py-1 scrollbar-none">
+        <CommandPrimitive.List ref={listRef} className="overflow-y-auto overflow-x-hidden scroll-py-1 scrollbar-none" style={{ maxHeight: "min(400px, calc(100vh - 10rem))" }}>
           <CommandPrimitive.Empty className="py-10 text-center text-[13px] text-text-faint">
             No transforms found.
           </CommandPrimitive.Empty>
@@ -439,9 +439,9 @@ function ArcPalette({ open, onOpenChange, onSelect }: PaletteProps) {
       >
         <SearchInput />
 
-        <div className="flex" style={{ height: 380 }}>
+        <div className="flex" style={{ height: "min(380px, calc(100vh - 10rem))" }}>
           {/* Minimal list */}
-          <CommandPrimitive.List ref={listRef} className="w-[260px] overflow-y-auto overflow-x-hidden scroll-py-1 border-r border-white/[0.06] scrollbar-none">
+          <CommandPrimitive.List ref={listRef} className="w-[260px] min-w-0 shrink overflow-y-auto overflow-x-hidden scroll-py-1 border-r border-white/[0.06] scrollbar-none">
             <CommandPrimitive.Empty className="py-10 text-center text-[13px] text-text-faint">
               No transforms found.
             </CommandPrimitive.Empty>

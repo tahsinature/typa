@@ -87,6 +87,16 @@ registerTransform({
       .join('\n'),
 });
 
+registerTransform({
+  id: 'find-duplicates',
+  name: 'Find Duplicates',
+  description: 'Find duplicate lines with counts and line numbers',
+  category: 'Formatting',
+  inputViews: ['raw-input'],
+  outputViews: ['duplicate-viewer'],
+  fn: (input) => input,
+});
+
 // Case conversions
 
 registerTransform({

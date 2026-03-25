@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, type ComponentType } from "react";
 import {
   type ColumnDef,
   type SortingState,
@@ -17,8 +17,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { TableIcon } from "@/components/Icons";
-import { registerViewer } from "./registry";
+import { registerOutputView } from "./registry";
+
+/* ── Row Action Types ── */
+
+export interface RowAction {
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+  variant?: "default" | "danger";
+  action: (row: Record<string, unknown>) => void | Promise<void>;
+}
+
+export interface RowActionGroup {
+  label?: string;
+  actions: RowAction[];
+}
+
+export type RowActionsConfig = (row: Record<string, unknown>) => RowActionGroup[];
 
 /* ── Data extraction ── */
 
@@ -56,7 +80,6 @@ function parseQuery(query: string, columns: string[]): { global: string; columnF
   const filters: Record<string, string> = {};
   let global = query;
 
-  // Match patterns like status:success or email:ken
   const colSet = new Set(columns.map((c) => c.toLowerCase()));
   const parts = query.match(/(\w+):(\S+)/g);
   if (parts) {
@@ -109,7 +132,7 @@ function ColumnsPopover({ table }: { table: ReturnType<typeof useReactTable<Reco
               className="flex items-center gap-2 w-full px-2 py-1 rounded-md text-[11px] text-text-secondary hover:bg-bg-hover transition-colors"
             >
               <span className={`w-[12px] h-[12px] rounded-sm border text-[9px] flex items-center justify-center ${col.getIsVisible() ? "bg-accent border-accent text-white" : "border-border"}`}>
-                {col.getIsVisible() && "✓"}
+                {col.getIsVisible() && "\u2713"}
               </span>
               {col.id}
             </button>
@@ -130,16 +153,54 @@ function FilterChips({ filters, onRemove }: { filters: Record<string, string>; o
       {entries.map(([col, val]) => (
         <span key={col} className="inline-flex items-center gap-1 h-[20px] px-2 rounded-full bg-accent/10 text-accent text-[10px] font-medium">
           {col}:{val}
-          <button onClick={() => onRemove(col)} className="hover:text-accent-hover ml-0.5">×</button>
+          <button onClick={() => onRemove(col)} className="hover:text-accent-hover ml-0.5">\u00d7</button>
         </span>
       ))}
     </div>
   );
 }
 
+/* ── Row Actions Menu ── */
+
+function RowActionsMenu({ row, groups }: { row: Record<string, unknown>; groups: RowActionGroup[] }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center justify-center size-6 rounded-md text-text-faint hover:text-text-secondary hover:bg-bg-hover transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="5" r="1" />
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="12" cy="19" r="1" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {groups.map((group, gi) => (
+          <div key={gi}>
+            {gi > 0 && <DropdownMenuSeparator />}
+            {group.label && <DropdownMenuLabel>{group.label}</DropdownMenuLabel>}
+            {group.actions.map((action) => (
+              <DropdownMenuItem
+                key={action.label}
+                onClick={() => action.action(row)}
+                className={action.variant === "danger" ? "text-danger focus:text-danger" : ""}
+              >
+                {action.icon && (
+                  <action.icon className="mr-2 size-3.5" />
+                )}
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /* ── Viewer ── */
 
-function TableViewer({ data }: { data: unknown }) {
+function TableViewer({ data, rowActions }: { data: unknown; theme?: "dark" | "light"; rowActions?: RowActionsConfig }) {
   const tableData = useMemo(() => extractTableData(data), [data]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -152,7 +213,8 @@ function TableViewer({ data }: { data: unknown }) {
 
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     if (!tableData) return [];
-    return tableData.columns.map((col) => ({
+
+    const dataCols: ColumnDef<Record<string, unknown>>[] = tableData.columns.map((col) => ({
       accessorKey: col,
       header: ({ column }) => (
         <button
@@ -161,7 +223,7 @@ function TableViewer({ data }: { data: unknown }) {
         >
           {col}
           <span className="opacity-40">
-            {column.getIsSorted() === "asc" ? "↑" : column.getIsSorted() === "desc" ? "↓" : "⇅"}
+            {column.getIsSorted() === "asc" ? "\u2191" : column.getIsSorted() === "desc" ? "\u2193" : "\u21C5"}
           </span>
         </button>
       ),
@@ -174,7 +236,25 @@ function TableViewer({ data }: { data: unknown }) {
         return formatCell(row.getValue(columnId)).toLowerCase().includes(String(filterValue).toLowerCase());
       },
     }));
-  }, [tableData]);
+
+    // Append actions column if rowActions configured
+    if (rowActions) {
+      dataCols.push({
+        id: "_actions",
+        header: "",
+        cell: ({ row }) => {
+          const groups = rowActions(row.original);
+          if (groups.length === 0) return null;
+          return <RowActionsMenu row={row.original} groups={groups} />;
+        },
+        enableHiding: false,
+        enableSorting: false,
+        size: 40,
+      });
+    }
+
+    return dataCols;
+  }, [tableData, rowActions]);
 
   // Apply column filters from smart search
   const filteredData = useMemo(() => {
@@ -216,7 +296,7 @@ function TableViewer({ data }: { data: unknown }) {
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: "var(--bg)" }}>
-      {/* Toolbar — one line */}
+      {/* Toolbar */}
       <div className="shrink-0 flex items-center gap-1.5 px-3 py-2">
         <div className="relative flex-1">
           <SearchIcon />
@@ -235,7 +315,6 @@ function TableViewer({ data }: { data: unknown }) {
       <FilterChips
         filters={columnFilters}
         onRemove={(col) => {
-          // Remove the "col:value" part from query
           const regex = new RegExp(`${col}:\\S+\\s*`, "i");
           setQuery((q) => q.replace(regex, "").trim());
         }}
@@ -295,7 +374,29 @@ function SearchIcon() {
   );
 }
 
-registerViewer({
+/* ── Factory: create a table view with custom row actions ── */
+
+export function createTableView(config: {
+  id: string;
+  name: string;
+  icon?: ComponentType;
+  parse?: (output: string) => unknown;
+  rowActions: RowActionsConfig;
+}) {
+  registerOutputView({
+    id: config.id,
+    name: config.name,
+    icon: config.icon ?? TableIcon,
+    parse: config.parse ?? ((output) => JSON.parse(output)),
+    component: ({ data, theme }: { data: unknown; theme: "dark" | "light" }) => (
+      <TableViewer data={data} theme={theme} rowActions={config.rowActions} />
+    ),
+  });
+}
+
+/* ── Default table registration (no row actions) ── */
+
+registerOutputView({
   parse: (output) => JSON.parse(output),
   id: "table",
   name: "Table View",

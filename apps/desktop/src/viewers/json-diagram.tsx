@@ -17,12 +17,12 @@ import { registerViewer } from "./registry";
 
 /* ── Sizing ── */
 
-const CHAR_W = 7;
-const ROW_H = 24;
-const HEADER_H = 28;
-const PAD_X = 20;
-const MIN_W = 100;
-const MAX_W = 320;
+const CHAR_W = 7.2;
+const ROW_H = 28;
+const HEADER_H = 32;
+const PAD_X = 48;
+const MIN_W = 130;
+const MAX_W = 420;
 
 function textW(s: string): number {
   return Math.min(MAX_W, Math.max(MIN_W, s.length * CHAR_W + PAD_X));
@@ -43,7 +43,9 @@ interface NodePayload {
   childKeys: string[];
   w: number;
   h: number;
-  highlight: "none" | "match" | "active";
+  highlight: "none" | "match" | "active" | "focus" | "selected";
+  onRowClick?: (childKey: string) => void;
+  onHeaderClick?: () => void;
 }
 
 /* ── Parse JSON → nodes + edges ── */
@@ -158,87 +160,227 @@ function keyColorVal(isDark: boolean): string {
 
 /* ── Custom Node ── */
 
+function TypeBadge({ isArray, isDark }: { isArray: boolean; isDark: boolean }) {
+  const text = isArray ? "[]" : "{}";
+  const color = isArray ? (isDark ? "#e8c479" : "#d97706") : (isDark ? "#a78bfa" : "#7c3aed");
+  return (
+    <span
+      style={{
+        fontSize: 9,
+        fontWeight: 700,
+        color,
+        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+        padding: "1px 4px",
+        borderRadius: 4,
+        marginRight: 6,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        lineHeight: 1,
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+function PathBreadcrumb({ path, isDark }: { path: string; isDark: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const dotPath = path;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(dotPath);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  const segments = path.split(".");
+
+  return (
+    <div className="absolute top-2 right-2 z-[10] flex items-center gap-2 rounded-lg border shadow-md px-1 py-1"
+      style={{
+        background: isDark ? "rgba(30,30,34,0.95)" : "rgba(255,255,255,0.97)",
+        borderColor: isDark ? "rgba(167,139,250,0.2)" : "rgba(167,139,250,0.25)",
+      }}
+    >
+      <div className="flex items-center gap-0.5 pl-2">
+        {segments.map((segment, i) => (
+          <span key={i} className="flex items-center gap-0.5">
+            <span
+              className="text-[11px] font-mono"
+              style={{
+                color: i === segments.length - 1 ? "#a78bfa" : (isDark ? "#666" : "#999"),
+                fontWeight: i === segments.length - 1 ? 600 : 400,
+              }}
+            >
+              {segment}
+            </span>
+            {i < segments.length - 1 && (
+              <span className="text-[10px] font-mono" style={{ color: isDark ? "#444" : "#ccc" }}>.</span>
+            )}
+          </span>
+        ))}
+      </div>
+      <button
+        onClick={handleCopy}
+        className="flex items-center justify-center h-6 px-2 rounded-md text-[10px] font-medium transition-all duration-150 cursor-pointer"
+        style={{
+          background: copied
+            ? (isDark ? "rgba(52,208,88,0.1)" : "rgba(52,208,88,0.08)")
+            : (isDark ? "rgba(167,139,250,0.1)" : "rgba(167,139,250,0.08)"),
+          color: copied ? "#34d058" : "#a78bfa",
+        }}
+      >
+        {copied ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
+function ChevronRight({ color }: { color: string }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 4 }}>
+      <path d="M6 4l4 4-4 4" />
+    </svg>
+  );
+}
+
 function JsonNode({ data }: { data: NodePayload }) {
-  const { label, rows, childKeys, w, h, highlight } = data;
+  const { label, rows, childKeys, w, h, highlight, onRowClick, onHeaderClick } = data;
   const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+
+  const isArray = label.includes("[");
 
   const borderColor =
     highlight === "active" ? "#f59e0b"
-    : highlight === "match" ? "#3B82F6"
-    : isDark ? "#424242" : "#BCBEC0";
+    : highlight === "selected" ? "#a78bfa"
+    : highlight === "focus" ? "#59b8ff"
+    : highlight === "match" ? "#34d058"
+    : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
   const boxShadow =
-    highlight === "active" ? "0 0 0 2px rgba(245, 158, 11, 0.4)"
-    : highlight === "match" ? "0 0 0 2px rgba(59, 130, 246, 0.3)"
-    : "none";
+    highlight === "active"
+      ? "0 0 0 2px rgba(245, 158, 11, 0.4), 0 4px 12px rgba(0,0,0,0.15)"
+    : highlight === "selected"
+      ? "0 0 0 2px rgba(167, 139, 250, 0.4), 0 0 16px rgba(167, 139, 250, 0.1)"
+    : highlight === "focus"
+      ? "0 0 0 3px rgba(89, 184, 255, 0.4), 0 0 20px rgba(89, 184, 255, 0.12)"
+    : highlight === "match"
+      ? "0 0 0 2px rgba(52, 208, 88, 0.4), 0 0 16px rgba(52, 208, 88, 0.1)"
+    : isDark
+      ? "0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)"
+      : "0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)";
+
+  const bgColor =
+    highlight === "active" ? (isDark ? "#2e2a1e" : "#fffbeb")
+    : highlight === "selected" ? (isDark ? "#252030" : "#f5f3ff")
+    : highlight === "match" ? (isDark ? "#1a2e1e" : "#f0fdf4")
+    : isDark ? "#26262a" : "#ffffff";
 
   return (
     <div
       style={{
         width: w,
         height: h,
-        background: isDark ? "#292929" : "#ffffff",
-        border: `2px solid ${borderColor}`,
-        borderRadius: 6,
+        background: bgColor,
+        border: `${highlight === "match" || highlight === "active" ? "2px" : "1px"} solid ${borderColor}`,
+        borderRadius: 10,
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-        fontSize: 11,
+        fontSize: 11.5,
         overflow: "hidden",
         boxShadow,
-        transition: "border-color 0.2s, box-shadow 0.2s",
+        transition: "border-color 0.25s, box-shadow 0.25s",
       }}
     >
-      <Handle type="target" position={Position.Left} id="target" style={{ width: 8, height: 8, background: isDark ? "#666" : "#999" }} />
+      <Handle type="target" position={Position.Left} id="target" style={{
+        width: 10, height: 10,
+        background: isDark ? "#26262a" : "#fff",
+        border: `2px solid ${isDark ? "#555" : "#bbb"}`,
+        borderRadius: "50%",
+      }} />
 
       {/* Header */}
       <div
+        onClick={onHeaderClick}
         style={{
           height: HEADER_H,
-          padding: "0 10px",
+          padding: "0 12px",
           display: "flex",
           alignItems: "center",
-          background: isDark ? "#323232" : "#f0f0f2",
-          borderBottom: `1px solid ${isDark ? "#3a3a3a" : "#e0e0e0"}`,
-          color: isDark ? "#a0a0a5" : "#666",
+          cursor: "pointer",
+          background: isDark
+            ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
+            : "linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.04) 100%)",
+          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+          color: isDark ? "#b0b0b8" : "#555",
           fontWeight: 600,
-          borderRadius: "6px 6px 0 0",
+          fontSize: 11,
+          letterSpacing: 0.3,
+          borderRadius: "10px 10px 0 0",
         }}
       >
-        {label}
+        <TypeBadge isArray={isArray} isDark={isDark} />
+        <span style={{ opacity: 0.9 }}>{label.replace(/\s*\[\d+\]/, "")}</span>
       </div>
 
       {/* Rows */}
-      {rows.map((row, i) => (
-        <div
-          key={i}
-          style={{
-            height: ROW_H,
-            padding: "0 10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: row.key !== null ? "space-between" : "center",
-            borderBottom: i < rows.length - 1 ? `1px solid ${isDark ? "#333" : "#eee"}` : "none",
-            position: "relative",
-          }}
-        >
-          {row.key !== null ? (
-            <>
-              <span style={{ color: keyColorVal(isDark), flexShrink: 0, maxWidth: "40%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.key}</span>
-              <span style={{ color: valColor(row.type, row.val, isDark), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 8, textAlign: "right" }}>{row.val}</span>
-            </>
-          ) : (
-            <span style={{ color: valColor(row.type, row.val, isDark), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>{row.val}</span>
-          )}
+      {rows.map((row, i) => {
+        const isChild = childKeys.includes(row.key ?? "");
+        return (
+          <div
+            key={i}
+            onClick={isChild && onRowClick ? () => onRowClick(row.key!) : undefined}
+            style={{
+              height: ROW_H,
+              padding: "0 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: row.key !== null ? "space-between" : "center",
+              borderBottom: i < rows.length - 1 ? `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` : "none",
+              position: "relative",
+              cursor: isChild ? "pointer" : "default",
+              background: "transparent",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { if (isChild) e.currentTarget.style.background = isDark ? "rgba(89,184,255,0.06)" : "rgba(118,28,234,0.04)"; }}
+            onMouseLeave={(e) => { if (isChild) e.currentTarget.style.background = "transparent"; }}
+          >
+            {row.key !== null ? (
+              <>
+                <span style={{ color: keyColorVal(isDark), flexShrink: 0, whiteSpace: "nowrap", fontSize: 11 }}>{row.key}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, whiteSpace: "nowrap", marginLeft: 12, color: valColor(row.type, row.val, isDark), fontSize: 11 }}>
+                  {row.val}
+                  {isChild && <ChevronRight color={isDark ? "rgba(89,184,255,0.5)" : "rgba(118,28,234,0.4)"} />}
+                </span>
+              </>
+            ) : (
+              <span style={{ color: valColor(row.type, row.val, isDark), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%", fontSize: 11 }}>{row.val}</span>
+            )}
 
-          {childKeys.includes(row.key ?? "") && (
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={`src-${row.key}`}
-              style={{ width: 8, height: 8, background: isDark ? "#59b8ff" : "#761CEA" }}
-            />
-          )}
-        </div>
-      ))}
+            {isChild && (
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={`src-${row.key}`}
+                style={{
+                  width: 10, height: 10,
+                  background: isDark ? "#26262a" : "#fff",
+                  border: `2px solid ${isDark ? "#59b8ff" : "#761CEA"}`,
+                  borderRadius: "50%",
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -256,8 +398,14 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
   }, [data]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [rfInstance, setRfInstance] = useState<any>(null);
+
+  // Sync ReactFlow state when data changes
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   // Search
   const [query, setQuery] = useState("");
@@ -308,6 +456,109 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
     rfInstance.setCenter(node.position.x + node.data.w / 2, node.position.y + node.data.h / 2, { zoom: 1.2, duration: 400 });
   }, [rfInstance, initialNodes]);
 
+  // Build edge lookup: "sourceId:childKey" → targetNodeId
+  // Build parent map: targetNodeId → { parentId, key }
+  const { edgeLookup, parentMap } = useMemo(() => {
+    const lookup = new Map<string, string>();
+    const parents = new Map<string, { parentId: string; key: string }>();
+    for (const edge of initialEdges) {
+      const key = edge.sourceHandle?.replace("src-", "");
+      if (key) {
+        lookup.set(`${edge.source}:${key}`, edge.target);
+        parents.set(edge.target, { parentId: edge.source, key });
+      }
+    }
+    return { edgeLookup: lookup, parentMap: parents };
+  }, [initialEdges]);
+
+  // Resolve full path for a node
+  const getNodePath = useCallback((nodeId: string): string => {
+    const parts: string[] = [];
+    let current = nodeId;
+    while (current) {
+      const parent = parentMap.get(current);
+      if (parent) {
+        parts.unshift(parent.key);
+        current = parent.parentId;
+      } else {
+        parts.unshift("root");
+        break;
+      }
+    }
+    return parts.join(".");
+  }, [parentMap]);
+
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+
+  // Blip: briefly highlight a node then fade
+  const blipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blipNode = useCallback((nodeId: string) => {
+    if (blipTimeout.current) clearTimeout(blipTimeout.current);
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: { ...n.data, highlight: n.id === nodeId ? "focus" as const : (n.data as NodePayload).highlight === "focus" ? "none" as const : (n.data as NodePayload).highlight },
+      })),
+    );
+    blipTimeout.current = setTimeout(() => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          (n.data as NodePayload).highlight === "focus"
+            ? { ...n, data: { ...n.data, highlight: "none" } }
+            : n,
+        ),
+      );
+    }, 1000);
+  }, [setNodes]);
+
+  // Node selection on header click
+  const selectNode = useCallback((nodeId: string) => {
+    setSelectedPath(getNodePath(nodeId));
+    setNodes((nds) =>
+      nds.map((n) => {
+        const d = n.data as NodePayload;
+        if (n.id === nodeId && d.highlight !== "active") {
+          return { ...n, data: { ...d, highlight: "selected" as const } };
+        }
+        if (n.id !== nodeId && d.highlight === "selected") {
+          return { ...n, data: { ...d, highlight: "none" as const } };
+        }
+        return n;
+      }),
+    );
+  }, [setNodes, getNodePath]);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedPath(null);
+    setNodes((nds) =>
+      nds.map((n) =>
+        (n.data as NodePayload).highlight === "selected"
+          ? { ...n, data: { ...n.data, highlight: "none" as const } }
+          : n,
+      ),
+    );
+  }, [setNodes]);
+
+  // Inject onRowClick and onHeaderClick into nodes
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          onRowClick: (childKey: string) => {
+            const targetId = edgeLookup.get(`${n.id}:${childKey}`);
+            if (targetId) {
+              focusNode(targetId);
+              blipNode(targetId);
+            }
+          },
+          onHeaderClick: () => selectNode(n.id),
+        },
+      })),
+    );
+  }, [edgeLookup, focusNode, blipNode, selectNode, setNodes]);
+
   useEffect(() => {
     if (matches.length > 0 && matches[activeIdx]) {
       focusNode(matches[activeIdx]);
@@ -332,8 +583,25 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Force WebKit to re-rasterize nodes when pointer re-enters the diagram
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleEnter = () => {
+      const vp = el.querySelector<HTMLElement>(".react-flow__viewport");
+      if (!vp) return;
+      // Nudge transform to force re-rasterization, then restore
+      const current = vp.style.transform;
+      vp.style.transform = current + " translateZ(0)";
+      requestAnimationFrame(() => { vp.style.transform = current; });
+    };
+    el.addEventListener("pointerenter", handleEnter);
+    return () => el.removeEventListener("pointerenter", handleEnter);
+  }, []);
+
   return (
-    <div className="json-diagram h-full w-full relative" style={{ backgroundColor: isDark ? "#141414" : "#f7f7f7" }}>
+    <div ref={containerRef} className="json-diagram h-full w-full relative" style={{ backgroundColor: isDark ? "#141414" : "#f7f7f7" }}>
       {/* Search */}
       <div className="absolute top-2 left-2 z-[10] flex items-center gap-1.5" style={{ cursor: "default" }}>
         <div className="relative flex items-center">
@@ -357,11 +625,15 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
         )}
       </div>
 
+      {/* Node path breadcrumb */}
+      {selectedPath && <PathBreadcrumb path={selectedPath} isDark={isDark} />}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onPaneClick={handlePaneClick}
         nodeTypes={nodeTypes}
         onInit={setRfInstance}
         fitView

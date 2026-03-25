@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { Allotment } from "allotment";
-import { getTransform } from "@typa/engine";
+import { getTransform, CATEGORY_META } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useEngineStore } from "@/stores/engineStore";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -12,11 +12,27 @@ import { getInputViewsForTransform } from "@/widgets";
 /* -- Pane Header -- */
 
 function PaneHeader({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center justify-between px-3 h-[32px] shrink-0 border-b border-border-subtle bg-bg-secondary/40">{children}</div>;
+  return (
+    <div className="flex items-center justify-between px-3.5 h-[34px] shrink-0 border-b border-border-subtle/80 bg-bg-secondary/30">
+      {children}
+    </div>
+  );
 }
 
-function PaneLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[11px] text-text-muted font-medium tracking-wide uppercase">{children}</span>;
+function PaneLabel({ children, accentColor }: { children: React.ReactNode; accentColor?: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {accentColor && (
+        <span
+          className="size-[5px] rounded-full"
+          style={{ background: accentColor }}
+        />
+      )}
+      <span className="text-[10.5px] text-text-faint font-semibold tracking-[0.06em] uppercase select-none">
+        {children}
+      </span>
+    </div>
+  );
 }
 
 function ToolbarGroup({ children }: { children: React.ReactNode }) {
@@ -24,15 +40,15 @@ function ToolbarGroup({ children }: { children: React.ReactNode }) {
 }
 
 function ToolbarSep() {
-  return <div className="w-px h-3.5 bg-border-subtle mx-1" />;
+  return <div className="w-px h-3 bg-border-subtle mx-1" />;
 }
 
 /* -- Transform Error -- */
 
 function TransformError({ message }: { message: string }) {
   return (
-    <div className="h-full flex items-center justify-center select-none">
-      <div className="max-w-lg w-full px-6">
+    <div className="h-full flex items-center justify-center select-none p-6">
+      <div className="max-w-md w-full">
         <div
           className="rounded-xl px-5 py-4 flex items-start gap-4"
           style={{
@@ -40,18 +56,39 @@ function TransformError({ message }: { message: string }) {
             border: "1px solid rgba(248, 81, 73, 0.12)",
           }}
         >
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className="shrink-0 mt-0.5">
-            <circle cx="16" cy="16" r="15" stroke="var(--cl-danger)" strokeWidth="1.5" opacity="0.25" />
-            <circle cx="16" cy="16" r="11" fill="var(--cl-danger)" opacity="0.1" />
-            <path d="M12.5 12.5L19.5 19.5M19.5 12.5L12.5 19.5" stroke="var(--cl-danger)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          <div className="shrink-0 mt-0.5 flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: "rgba(248, 81, 73, 0.08)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cl-danger)" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </div>
           <div className="flex flex-col gap-1.5 min-w-0">
-            <span className="text-[13px] font-semibold" style={{ color: "var(--cl-danger)" }}>
+            <span className="text-[12px] font-semibold" style={{ color: "var(--cl-danger)" }}>
               Transform Error
             </span>
-            <code className="text-[12px] font-mono text-text-secondary leading-relaxed break-all select-text">{message}</code>
+            <code className="text-[11.5px] font-mono text-text-secondary/80 leading-relaxed break-all select-text">
+              {message}
+            </code>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* -- Empty State -- */
+
+function EmptyOutput() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-3 select-none">
+      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-text-faint/50">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+      </div>
+      <div className="text-center">
+        <p className="text-[12px] text-text-faint/60">No output yet</p>
+        <p className="text-[10.5px] text-text-faint/35 mt-0.5">Type in the input pane to see results</p>
       </div>
     </div>
   );
@@ -61,7 +98,7 @@ function TransformError({ message }: { message: string }) {
 
 function ViewTab({ label, icon: Icon, active, disabled, errorTooltip, onClick }: { label: string; icon: React.ComponentType; active: boolean; disabled?: boolean; errorTooltip?: string; onClick: () => void }) {
   return (
-    <IconButton tooltip={disabled && errorTooltip ? errorTooltip : label} active={active} onClick={disabled ? undefined : onClick} className={disabled ? "cursor-not-allowed opacity-50" : undefined}>
+    <IconButton tooltip={disabled && errorTooltip ? errorTooltip : label} active={active} onClick={disabled ? undefined : onClick} className={disabled ? "cursor-not-allowed opacity-40" : undefined}>
       <Icon />
     </IconButton>
   );
@@ -74,6 +111,7 @@ export function DualPane() {
   const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const updateInput = useTabStore((s) => s.updateInput);
   const updateOutput = useTabStore((s) => s.updateOutput);
+  const updateExecTime = useTabStore((s) => s.updateExecTime);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
   const layout = useSettingsStore((s) => s.layout);
 
@@ -87,6 +125,8 @@ export function DualPane() {
 
   const transform = selectedTransformId !== "calculator" ? getTransform(selectedTransformId) : undefined;
   const inputCount = transform?.inputs ?? 1;
+  const category = transform?.category ?? "Math";
+  const accentColor = CATEGORY_META[category]?.color;
 
   // Resolve available views
   const inputViewIds = transform?.inputViews ?? ["raw-input"];
@@ -115,6 +155,7 @@ export function DualPane() {
 
   const runTransform = useCallback(
     async (transformId: string, ...texts: string[]) => {
+      const start = performance.now();
       if (transformId === "calculator") {
         const engine = useEngineStore.getState().engine;
         const results = engine.evaluateDocument(texts[0]);
@@ -135,8 +176,9 @@ export function DualPane() {
           updateOutput(activeTabId, `Error: ${msg}`);
         }
       }
+      updateExecTime(activeTabId, performance.now() - start);
     },
-    [activeTabId, updateOutput],
+    [activeTabId, updateOutput, updateExecTime],
   );
 
   useEffect(() => {
@@ -204,7 +246,7 @@ export function DualPane() {
   const renderOutputPane = () => (
     <div className={`flex flex-col ${outputFullscreen ? "fixed inset-0 z-50 bg-bg" : "h-full"}`}>
       <PaneHeader>
-        <PaneLabel>Output</PaneLabel>
+        <PaneLabel accentColor={accentColor}>Output</PaneLabel>
         <ToolbarGroup>
           <IconButton tooltip={outputFullscreen ? "Exit fullscreen" : "Fullscreen"} active={outputFullscreen} onClick={() => setOutputFullscreen((f) => !f)}>
             {outputFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
@@ -212,8 +254,8 @@ export function DualPane() {
           {availableOutputViews.length > 1 && <ToolbarSep />}
           {availableOutputViews.length > 1 && (
             <div
-              className="flex items-center gap-0.5 rounded-md px-1 py-0.5 -mx-1 transition-colors"
-              style={hasError ? { background: "rgba(248, 81, 73, 0.1)" } : undefined}
+              className="flex items-center gap-0.5 rounded-md px-1 py-0.5 -mx-1 transition-colors duration-150"
+              style={hasError ? { background: "rgba(248, 81, 73, 0.08)" } : undefined}
             >
               {availableOutputViews.map((view) => (
                 <ViewTab key={view.id} label={view.name} icon={view.icon} active={activeOutputView?.id === view.id} disabled={hasError} errorTooltip="Output unavailable" onClick={() => setActiveOutputViewId(view.id)} />
@@ -228,7 +270,7 @@ export function DualPane() {
         ) : activeOutputView && parsedData !== null ? (
           <activeOutputView.component data={parsedData} theme={themeMode} />
         ) : (
-          <div className="h-full flex items-center justify-center text-text-faint text-[13px]">No output</div>
+          <EmptyOutput />
         )}
       </div>
     </div>

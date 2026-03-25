@@ -129,8 +129,8 @@ textarea, input, .monaco-editor, [contenteditable] {
 
 /* ── macOS-style scrollbars ── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -138,9 +138,15 @@ textarea, input, .monaco-editor, [contenteditable] {
 ::-webkit-scrollbar-thumb {
   background: var(--text-faint);
   border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ── Hidden scrollbar utility ── */
@@ -173,14 +179,19 @@ textarea:focus {
 
 /* ── Smooth allotment sash ── */
 .sash-container .sash {
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 .sash-container .sash::before {
   background-color: var(--cl-border-subtle) !important;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 .sash-container .sash:hover::before {
   background-color: var(--cl-accent) !important;
-  opacity: 0.4;
+  opacity: 0.35;
+}
+.sash-container .sash:active::before {
+  background-color: var(--cl-accent) !important;
+  opacity: 0.55;
 }
 
 /* ── Radix / shadcn animations ── */

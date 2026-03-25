@@ -6,6 +6,7 @@ export interface Tab {
   inputs: string[];
   output: string;
   selectedTransformId: string | null;
+  lastExecMs: number | null;
 }
 
 interface TabStore {
@@ -16,6 +17,7 @@ interface TabStore {
   setActiveTab: (id: string) => void;
   updateInput: (id: string, index: number, text: string) => void;
   updateOutput: (id: string, text: string) => void;
+  updateExecTime: (id: string, ms: number) => void;
   setSelectedTransform: (id: string, transformId: string | null) => void;
   renameTab: (id: string, label: string) => void;
   reorderTabs: (fromIndex: number, toIndex: number) => void;
@@ -39,6 +41,7 @@ function createTab(): Tab {
     inputs: [''],
     output: '',
     selectedTransformId: getLastTransformId(),
+    lastExecMs: null,
   };
 }
 
@@ -84,6 +87,12 @@ export const useTabStore = create<TabStore>((set, get) => ({
   updateOutput: (id, text) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === id ? { ...t, output: text } : t)),
+    }));
+  },
+
+  updateExecTime: (id, ms) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) => (t.id === id ? { ...t, lastExecMs: ms } : t)),
     }));
   },
 

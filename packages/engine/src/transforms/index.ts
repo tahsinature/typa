@@ -11,6 +11,7 @@ import './mermaid';
 import './code-image';
 import './text-stats';
 import './image-canvas';
+import './port-manager';
 
 // Re-export registry
 export {

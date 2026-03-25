@@ -13,7 +13,7 @@ export interface EvaluationResult {
 
 export const TRANSFORM_CATEGORIES = [
   'Math', 'JSON', 'Hashing', 'Encoding', 'Formatting',
-  'Numbers', 'Web', 'Diff', 'Image', 'Diagram', 'Text',
+  'Numbers', 'Web', 'Diff', 'Image', 'Diagram', 'Text', 'System',
 ] as const;
 
 export type TransformCategory = (typeof TRANSFORM_CATEGORIES)[number];
@@ -36,6 +36,7 @@ export const CATEGORY_META: Record<TransformCategory, CategoryMeta> = {
   Image:      { color: "#c084fc", gradient: ["#c084fc", "#9333ea"], iconPath: "M3 3h18a2 2 0 0 1 0 4H3a2 2 0 0 1 0-4zM9 9a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21" },
   Diagram:    { color: "#2dd4bf", gradient: ["#2dd4bf", "#0d9488"], iconPath: "M3 3h7v7H3zM14 3h7v7h-7zM8.5 17.5h7M3 14h7v7H3zM14 14h7v7h-7zM6.5 10v4M17.5 10v4" },
   Text:       { color: "#fbbf24", gradient: ["#fbbf24", "#d97706"], iconPath: "M3 7h18M3 12h12M3 17h18" },
+  System:     { color: "#ef4444", gradient: ["#ef4444", "#dc2626"], iconPath: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
 };
 
 /* ── Transforms ── */

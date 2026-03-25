@@ -3,6 +3,7 @@ import { useDocumentStore } from '@/stores/documentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { LayoutHorizontalIcon, LayoutVerticalIcon } from '@/components/Icons';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { getTransform, CATEGORY_META } from '@typa/engine';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -17,19 +18,40 @@ export function TabBar() {
   const theme = useSettingsStore((s) => s.resolvedTheme);
   const toggleTheme = useSettingsStore((s) => s.toggleTheme);
 
+  const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
+  const selectedTransformId = tab?.selectedTransformId ?? 'calculator';
+  const transform = selectedTransformId !== 'calculator' ? getTransform(selectedTransformId) : null;
+  const name = transform?.name ?? 'Calculator';
+  const category = transform?.category ?? 'Math';
+  const meta = CATEGORY_META[category];
+
   return (
-    <div className="flex items-center h-[36px] bg-bg-titlebar shrink-0 border-b border-border-subtle">
+    <div className="flex items-center h-[38px] bg-bg-titlebar shrink-0 border-b border-border-subtle">
       {/* Traffic lights */}
       <div className="w-[78px] h-full shrink-0 drag-region" data-tauri-drag-region />
 
-      {/* Drag region fills center */}
-      <div className="flex-1 h-full drag-region" data-tauri-drag-region />
+      {/* Center — active transform name */}
+      <div className="flex-1 h-full drag-region flex items-center justify-center" data-tauri-drag-region>
+        <div className="flex items-center gap-2 pointer-events-none select-none">
+          <span
+            className="size-[7px] rounded-full shrink-0"
+            style={{ background: meta.color, boxShadow: `0 0 6px ${meta.color}40` }}
+          />
+          <span className="text-[11.5px] text-text-muted font-medium tracking-wide">
+            <span className="text-text-faint">{category}</span>
+            <span className="text-text-faint/30 mx-1.5">/</span>
+            <span className="text-text-secondary">{name}</span>
+          </span>
+        </div>
+      </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 shrink-0 no-drag">
+      <div className="flex items-center gap-0.5 px-2.5 shrink-0 no-drag">
         <Tb onClick={() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })); }} tip="Switch transform ⌘K">
           <TransformIcon />
         </Tb>
+
+        <div className="w-px h-3 bg-border-subtle mx-0.5" />
 
         <Tb onClick={toggleLayout} tip={layout === 'vertical' ? 'Side-by-side' : 'Stacked'}>
           {layout === 'vertical' ? <LayoutHorizontalIcon /> : <LayoutVerticalIcon />}
@@ -37,9 +59,12 @@ export function TabBar() {
         <Tb onClick={toggleTheme} tip={theme === 'dark' ? 'Light theme' : 'Dark theme'}>
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </Tb>
+
+        <div className="w-px h-3 bg-border-subtle mx-0.5" />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center justify-center w-[26px] h-[26px] rounded-md text-text-faint hover:text-text-muted hover:bg-bg-hover/50 transition-colors cursor-pointer">
+            <button className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer">
               <MoreIcon />
             </button>
           </DropdownMenuTrigger>
@@ -53,7 +78,19 @@ export function TabBar() {
 }
 
 function Tb({ onClick, tip, children }: { onClick: () => void; tip: string; children: React.ReactNode }) {
-  return <Tooltip><TooltipTrigger asChild><button onClick={onClick} className="flex items-center justify-center w-[26px] h-[26px] rounded-md text-text-faint hover:text-text-muted hover:bg-bg-hover/50 transition-colors cursor-pointer">{children}</button></TooltipTrigger><TooltipContent>{tip}</TooltipContent></Tooltip>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={onClick}
+          className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer"
+        >
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{tip}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 function TransformIcon() {
