@@ -46,6 +46,8 @@ interface NodePayload {
   highlight: "none" | "match" | "active" | "focus" | "selected";
   onRowClick?: (childKey: string) => void;
   onHeaderClick?: () => void;
+  onParentClick?: () => void;
+  hasParent?: boolean;
 }
 
 /* ── Parse JSON → nodes + edges ── */
@@ -183,7 +185,7 @@ function TypeBadge({ isArray, isDark }: { isArray: boolean; isDark: boolean }) {
   );
 }
 
-function PathBreadcrumb({ path, isDark }: { path: string; isDark: boolean }) {
+function PathBreadcrumb({ path, isDark, onSegmentClick }: { path: string; isDark: boolean; onSegmentClick?: (segmentPath: string) => void }) {
   const [copied, setCopied] = useState(false);
   const dotPath = path;
 
@@ -203,22 +205,33 @@ function PathBreadcrumb({ path, isDark }: { path: string; isDark: boolean }) {
       }}
     >
       <div className="flex items-center gap-0.5 pl-2">
-        {segments.map((segment, i) => (
-          <span key={i} className="flex items-center gap-0.5">
-            <span
-              className="text-[11px] font-mono"
-              style={{
-                color: i === segments.length - 1 ? "#a78bfa" : (isDark ? "#666" : "#999"),
-                fontWeight: i === segments.length - 1 ? 600 : 400,
-              }}
-            >
-              {segment}
+        {segments.map((segment, i) => {
+          const segmentPath = segments.slice(0, i + 1).join(".");
+          const isLast = i === segments.length - 1;
+          return (
+            <span key={i} className="flex items-center gap-0.5">
+              <span
+                className="text-[11px] font-mono"
+                onClick={!isLast && onSegmentClick ? () => onSegmentClick(segmentPath) : undefined}
+                style={{
+                  color: isLast ? "#a78bfa" : (isDark ? "#888" : "#777"),
+                  fontWeight: isLast ? 600 : 400,
+                  cursor: isLast ? "default" : "pointer",
+                  borderRadius: 3,
+                  padding: "1px 3px",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => { if (!isLast) { e.currentTarget.style.background = isDark ? "rgba(167,139,250,0.12)" : "rgba(167,139,250,0.08)"; e.currentTarget.style.color = "#a78bfa"; } }}
+                onMouseLeave={(e) => { if (!isLast) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = isDark ? "#888" : "#777"; } }}
+              >
+                {segment}
+              </span>
+              {!isLast && (
+                <span className="text-[10px] font-mono" style={{ color: isDark ? "#444" : "#ccc" }}>.</span>
+              )}
             </span>
-            {i < segments.length - 1 && (
-              <span className="text-[10px] font-mono" style={{ color: isDark ? "#444" : "#ccc" }}>.</span>
-            )}
-          </span>
-        ))}
+          );
+        })}
       </div>
       <button
         onClick={handleCopy}
@@ -254,7 +267,7 @@ function ChevronRight({ color }: { color: string }) {
 }
 
 function JsonNode({ data }: { data: NodePayload }) {
-  const { label, rows, childKeys, w, h, highlight, onRowClick, onHeaderClick } = data;
+  const { label, rows, childKeys, w, h, highlight, onRowClick, onHeaderClick, onParentClick, hasParent } = data;
   const isDark = document.documentElement.getAttribute("data-theme") !== "light";
 
   const isArray = label.includes("[");
@@ -327,6 +340,31 @@ function JsonNode({ data }: { data: NodePayload }) {
           borderRadius: "10px 10px 0 0",
         }}
       >
+        {hasParent && (
+          <span
+            onClick={(e) => { e.stopPropagation(); onParentClick?.(); }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(167,139,250,0.15)" : "rgba(167,139,250,0.1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"; }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 18,
+              height: 18,
+              borderRadius: 4,
+              marginRight: 5,
+              cursor: "pointer",
+              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+              transition: "background 0.15s",
+              flexShrink: 0,
+            }}
+            title="Go to parent"
+          >
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#a78bfa" : "#7c3aed"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 4L6 8L10 12" />
+            </svg>
+          </span>
+        )}
         <TypeBadge isArray={isArray} isDark={isDark} />
         <span style={{ opacity: 0.9 }}>{label.replace(/\s*\[\d+\]/, "")}</span>
       </div>
@@ -490,6 +528,21 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
+  // Resolve a dot-path like "root.data.items" to a node ID
+  const resolvePathToNodeId = useCallback((path: string): string | null => {
+    const parts = path.split(".");
+    // "root" is always the first node (n0)
+    if (parts.length <= 1) return initialNodes[0]?.id ?? null;
+    let currentId = initialNodes[0]?.id;
+    if (!currentId) return null;
+    for (let i = 1; i < parts.length; i++) {
+      const nextId = edgeLookup.get(`${currentId}:${parts[i]}`);
+      if (!nextId) return null;
+      currentId = nextId;
+    }
+    return currentId;
+  }, [initialNodes, edgeLookup]);
+
   // Blip: briefly highlight a node then fade
   const blipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blipNode = useCallback((nodeId: string) => {
@@ -511,6 +564,49 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
     }, 1000);
   }, [setNodes]);
 
+  // Collect edge IDs on the path from root to a given node
+  const getPathEdgeIds = useCallback((nodeId: string): Set<string> => {
+    const ids = new Set<string>();
+    let current = nodeId;
+    while (current) {
+      const parent = parentMap.get(current);
+      if (parent) {
+        ids.add(`e${parent.parentId}-${current}`);
+        current = parent.parentId;
+      } else {
+        break;
+      }
+    }
+    return ids;
+  }, [parentMap]);
+
+  const highlightPathEdges = useCallback((pathEdgeIds: Set<string>) => {
+    setEdges((eds) =>
+      eds.map((e) => {
+        const onPath = pathEdgeIds.has(e.id);
+        return {
+          ...e,
+          style: {
+            ...e.style,
+            stroke: onPath ? "#a78bfa" : undefined,
+            strokeWidth: onPath ? 2.5 : undefined,
+          },
+          animated: onPath,
+        };
+      }),
+    );
+  }, [setEdges]);
+
+  const clearPathEdges = useCallback(() => {
+    setEdges((eds) =>
+      eds.map((e) => ({
+        ...e,
+        style: { ...e.style, stroke: undefined, strokeWidth: undefined },
+        animated: false,
+      })),
+    );
+  }, [setEdges]);
+
   // Node selection on header click
   const selectNode = useCallback((nodeId: string) => {
     setSelectedPath(getNodePath(nodeId));
@@ -526,7 +622,15 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
         return n;
       }),
     );
-  }, [setNodes, getNodePath]);
+    highlightPathEdges(getPathEdgeIds(nodeId));
+  }, [setNodes, getNodePath, highlightPathEdges, getPathEdgeIds]);
+
+  // Navigate to a node: focus, blip, and select it
+  const navigateToNode = useCallback((nodeId: string) => {
+    focusNode(nodeId);
+    blipNode(nodeId);
+    selectNode(nodeId);
+  }, [focusNode, blipNode, selectNode]);
 
   const handlePaneClick = useCallback(() => {
     setSelectedPath(null);
@@ -537,27 +641,33 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
           : n,
       ),
     );
-  }, [setNodes]);
+    clearPathEdges();
+  }, [setNodes, clearPathEdges]);
 
-  // Inject onRowClick and onHeaderClick into nodes
+  // Inject onRowClick, onHeaderClick, and onParentClick into nodes
   useEffect(() => {
     setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: {
-          ...n.data,
-          onRowClick: (childKey: string) => {
-            const targetId = edgeLookup.get(`${n.id}:${childKey}`);
-            if (targetId) {
-              focusNode(targetId);
-              blipNode(targetId);
-            }
+      nds.map((n) => {
+        const parent = parentMap.get(n.id);
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            hasParent: !!parent,
+            onRowClick: (childKey: string) => {
+              const targetId = edgeLookup.get(`${n.id}:${childKey}`);
+              if (targetId) {
+                focusNode(targetId);
+                blipNode(targetId);
+              }
+            },
+            onHeaderClick: () => selectNode(n.id),
+            onParentClick: parent ? () => navigateToNode(parent.parentId) : undefined,
           },
-          onHeaderClick: () => selectNode(n.id),
-        },
-      })),
+        };
+      }),
     );
-  }, [edgeLookup, focusNode, blipNode, selectNode, setNodes]);
+  }, [edgeLookup, parentMap, focusNode, blipNode, selectNode, navigateToNode, setNodes]);
 
   useEffect(() => {
     if (matches.length > 0 && matches[activeIdx]) {
@@ -626,7 +736,16 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
       </div>
 
       {/* Node path breadcrumb */}
-      {selectedPath && <PathBreadcrumb path={selectedPath} isDark={isDark} />}
+      {selectedPath && (
+        <PathBreadcrumb
+          path={selectedPath}
+          isDark={isDark}
+          onSegmentClick={(segmentPath) => {
+            const nodeId = resolvePathToNodeId(segmentPath);
+            if (nodeId) navigateToNode(nodeId);
+          }}
+        />
+      )}
 
       <ReactFlow
         nodes={nodes}
