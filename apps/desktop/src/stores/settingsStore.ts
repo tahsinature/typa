@@ -37,7 +37,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   theme: 'system',
   resolvedTheme: getSystemTheme(),
   layout: 'horizontal',
-  sidebarOpen: false,
+  sidebarOpen: true,
   fontSize: 13,
   paletteStyle: 'raycast',
 

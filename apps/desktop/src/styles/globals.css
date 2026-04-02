@@ -1,60 +1,60 @@
 @import "tailwindcss";
 
-/* ── Dark theme (default) — warm dark with depth ── */
+/* ── Dark theme (default) — Catppuccin Mocha ── */
 :root {
-  --bg: #1e1f23;
-  --bg-secondary: #252629;
-  --bg-elevated: #2c2d31;
-  --bg-hover: #303136;
-  --bg-active: #38393f;
-  --bg-titlebar: #1a1b1f;
-  --bg-sidebar: #1e1f23;
-  --bg-input: #35363b;
-  --bg-surface: #222327;
+  --bg: #1e1e2e;
+  --bg-secondary: #242435;
+  --bg-elevated: #313244;
+  --bg-hover: #393a4d;
+  --bg-active: #45475a;
+  --bg-titlebar: #181825;
+  --bg-sidebar: #1e1e2e;
+  --bg-input: #313244;
+  --bg-surface: #212133;
 
-  --text: #d6d6da;
-  --text-secondary: #a8a8ae;
-  --text-muted: #78787f;
-  --text-faint: #58585f;
+  --text: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #7f849c;
+  --text-faint: #585b70;
 
-  --cl-accent: #4d9fff;
-  --cl-accent-soft: rgba(77, 159, 255, 0.12);
-  --cl-accent-hover: #3d8ce6;
-  --cl-result: #34d058;
-  --cl-danger: #f85149;
+  --cl-accent: #89b4fa;
+  --cl-accent-soft: rgba(137, 180, 250, 0.12);
+  --cl-accent-hover: #74c7ec;
+  --cl-result: #a6e3a1;
+  --cl-danger: #f38ba8;
 
-  --cl-border: #3a3a40;
-  --cl-border-subtle: #2c2c32;
+  --cl-border: #45475a;
+  --cl-border-subtle: #313244;
 
   --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-/* ── Light theme ── */
+/* ── Light theme — Catppuccin Latte ── */
 [data-theme="light"] {
-  --bg: #fafafa;
-  --bg-secondary: #f2f2f4;
+  --bg: #eff1f5;
+  --bg-secondary: #e6e9ef;
   --bg-elevated: #ffffff;
-  --bg-hover: #e8e8ec;
-  --bg-active: #dcdce0;
-  --bg-titlebar: #ededf0;
-  --bg-sidebar: #f5f5f7;
+  --bg-hover: #dce0e8;
+  --bg-active: #ccd0da;
+  --bg-titlebar: #e6e9ef;
+  --bg-sidebar: #eff1f5;
   --bg-input: #ffffff;
-  --bg-surface: #f4f4f6;
+  --bg-surface: #e9ecf2;
 
-  --text: #1d1d1f;
-  --text-secondary: #48484a;
-  --text-muted: #8e8e93;
-  --text-faint: #b4b4b8;
+  --text: #4c4f69;
+  --text-secondary: #5c5f77;
+  --text-muted: #7c7f93;
+  --text-faint: #9ca0b0;
 
-  --cl-accent: #0071e3;
-  --cl-accent-soft: rgba(0, 113, 227, 0.08);
-  --cl-accent-hover: #005ec4;
-  --cl-result: #248a3d;
-  --cl-danger: #ff3b30;
+  --cl-accent: #1e66f5;
+  --cl-accent-soft: rgba(30, 102, 245, 0.08);
+  --cl-accent-hover: #179299;
+  --cl-result: #40a02b;
+  --cl-danger: #d20f39;
 
-  --cl-border: #d2d2d7;
-  --cl-border-subtle: #e5e5ea;
+  --cl-border: #ccd0da;
+  --cl-border-subtle: #dce0e8;
 
   --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);

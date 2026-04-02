@@ -11,7 +11,7 @@ interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ tooltip, active, variant = "ghost", shortcut, className, children, ...props }, ref) => {
     const base =
-      "flex items-center justify-center w-[24px] h-[24px] rounded-md transition-all duration-150 outline-none disabled:opacity-30";
+      "flex items-center justify-center w-[24px] h-[24px] rounded-md transition-all duration-150 outline-none cursor-pointer disabled:opacity-30 disabled:cursor-default";
     const variants = {
       ghost: active
         ? "text-accent bg-accent/12"
