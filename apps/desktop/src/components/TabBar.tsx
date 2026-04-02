@@ -58,12 +58,12 @@ export function TabBar() {
   }
 
   return (
-    <div className="flex items-center h-[38px] bg-bg-titlebar shrink-0 border-b border-border-subtle">
+    <div className="flex items-center h-[42px] bg-bg-titlebar shrink-0 border-b border-border-subtle/60">
       {/* Traffic lights spacer */}
       <div className="w-[78px] h-full shrink-0 drag-region" data-tauri-drag-region />
 
       {/* Tab strip */}
-      <div className="flex-1 h-full flex items-end gap-0 min-w-0 overflow-x-auto scrollbar-none drag-region" data-tauri-drag-region>
+      <div className="flex-1 h-full flex items-center gap-1 px-0.5 min-w-0 overflow-x-auto scrollbar-none drag-region" data-tauri-drag-region>
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId;
           const meta = getTabMeta(tab);
@@ -84,18 +84,25 @@ export function TabBar() {
               onClick={() => setActiveTab(tab.id)}
               onDoubleClick={() => startRename(tab.id, getTabLabel(tab))}
               className={`
-                no-drag group relative flex items-center gap-1.5 h-[30px] px-3 rounded-t-md
-                text-[11.5px] font-medium tracking-wide shrink-0 max-w-[180px]
-                transition-colors duration-100 cursor-pointer select-none
+                no-drag group relative flex items-center gap-2 h-[28px] px-3 rounded-lg
+                text-[11px] font-medium tracking-wide shrink-0 max-w-[200px]
+                transition-all duration-150 cursor-pointer select-none
                 ${isActive
-                  ? 'bg-bg text-text-secondary border-x border-t border-border-subtle'
-                  : 'text-text-faint hover:text-text-muted hover:bg-white/[0.03]'
+                  ? 'text-text'
+                  : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]'
                 }
               `}
+              style={isActive ? {
+                background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}06)`,
+                boxShadow: `0 0 0 1px ${meta.color}18, inset 0 1px 0 ${meta.color}10, 0 1px 3px rgba(0,0,0,0.15)`,
+              } : undefined}
             >
               <span
-                className="size-[6px] rounded-full shrink-0"
-                style={{ background: meta.color, boxShadow: `0 0 5px ${meta.color}30` }}
+                className="size-[5px] rounded-full shrink-0 transition-all duration-150"
+                style={{
+                  background: meta.color,
+                  boxShadow: isActive ? `0 0 6px ${meta.color}50` : 'none',
+                }}
               />
 
               {editingId === tab.id ? (
@@ -108,7 +115,7 @@ export function TabBar() {
                     if (e.key === 'Enter') commitRename(tab.id);
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="bg-transparent outline-none text-[11.5px] w-full min-w-[40px] text-text-secondary"
+                  className="bg-transparent outline-none text-[11px] w-full min-w-[40px] text-text-secondary"
                 />
               ) : (
                 <span className="truncate">{getTabLabel(tab)}</span>
@@ -118,10 +125,10 @@ export function TabBar() {
                 <span
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
                   className={`
-                    ml-0.5 flex items-center justify-center size-[16px] rounded
+                    ml-auto flex items-center justify-center size-[16px] rounded-md
                     text-text-faint hover:text-text-muted hover:bg-white/[0.08]
-                    transition-colors duration-100
-                    ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+                    transition-all duration-100
+                    ${isActive ? 'opacity-60 hover:opacity-100' : 'opacity-0 group-hover:opacity-60 hover:!opacity-100'}
                   `}
                 >
                   <CloseIcon />
@@ -134,7 +141,7 @@ export function TabBar() {
         {/* New tab button */}
         <button
           onClick={addTab}
-          className="no-drag flex items-center justify-center size-[28px] rounded-md text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-colors duration-100 cursor-pointer shrink-0 ml-0.5 mb-[2px]"
+          className="no-drag flex items-center justify-center size-[26px] rounded-lg text-text-muted hover:text-text-secondary hover:bg-white/[0.05] transition-all duration-150 cursor-pointer shrink-0 ml-0.5"
         >
           <PlusIcon />
         </button>
@@ -146,7 +153,7 @@ export function TabBar() {
           <TransformIcon />
         </Tb>
 
-        <div className="w-px h-3 bg-border-subtle mx-0.5" />
+        <ToolbarSep />
 
         <Tb onClick={toggleLayout} tip={layout === 'vertical' ? 'Side-by-side ⌘L' : 'Stacked ⌘L'}>
           {layout === 'vertical' ? <LayoutHorizontalIcon /> : <LayoutVerticalIcon />}
@@ -155,11 +162,11 @@ export function TabBar() {
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </Tb>
 
-        <div className="w-px h-3 bg-border-subtle mx-0.5" />
+        <ToolbarSep />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer">
+            <button className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-all duration-150 cursor-pointer">
               <MoreIcon />
             </button>
           </DropdownMenuTrigger>
@@ -172,13 +179,17 @@ export function TabBar() {
   );
 }
 
+function ToolbarSep() {
+  return <div className="w-px h-3.5 bg-white/[0.06] mx-1" />;
+}
+
 function Tb({ onClick, tip, children }: { onClick: () => void; tip: string; children: React.ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           onClick={onClick}
-          className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer"
+          className="flex items-center justify-center w-[28px] h-[28px] rounded-lg text-text-faint hover:text-text-muted hover:bg-white/[0.05] transition-all duration-150 cursor-pointer"
         >
           {children}
         </button>
@@ -206,7 +217,7 @@ function CloseIcon() {
 
 function PlusIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M6 1v10M1 6h10" />
     </svg>
   );

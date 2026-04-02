@@ -1,20 +1,21 @@
 @import "tailwindcss";
 
-/* ── Dark theme (default) — refined dark ── */
+/* ── Dark theme (default) — warm dark with depth ── */
 :root {
   --bg: #1e1f23;
-  --bg-secondary: #252529;
-  --bg-elevated: #2c2d33;
-  --bg-hover: #2f3238;
-  --bg-active: #383b42;
-  --bg-titlebar: #232428;
+  --bg-secondary: #252629;
+  --bg-elevated: #2c2d31;
+  --bg-hover: #303136;
+  --bg-active: #38393f;
+  --bg-titlebar: #1a1b1f;
   --bg-sidebar: #1e1f23;
-  --bg-input: #35373d;
+  --bg-input: #35363b;
+  --bg-surface: #222327;
 
-  --text: #d4d4d4;
-  --text-secondary: #a8a8a8;
-  --text-muted: #6e6e73;
-  --text-faint: #48484d;
+  --text: #d6d6da;
+  --text-secondary: #a8a8ae;
+  --text-muted: #6e6e76;
+  --text-faint: #4a4a52;
 
   --cl-accent: #4d9fff;
   --cl-accent-soft: rgba(77, 159, 255, 0.12);
@@ -23,9 +24,10 @@
   --cl-danger: #f85149;
 
   --cl-border: #3a3a40;
-  --cl-border-subtle: #2a2a30;
+  --cl-border-subtle: #2c2c32;
 
   --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Light theme ── */
@@ -38,6 +40,7 @@
   --bg-titlebar: #ededf0;
   --bg-sidebar: #f5f5f7;
   --bg-input: #ffffff;
+  --bg-surface: #f4f4f6;
 
   --text: #1d1d1f;
   --text-secondary: #48484a;
@@ -54,6 +57,7 @@
   --cl-border-subtle: #e5e5ea;
 
   --shadow-palette: 0 25px 50px -12px rgba(0, 0, 0, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Tailwind theme mapping ── */
@@ -66,6 +70,7 @@
   --color-bg-titlebar: var(--bg-titlebar);
   --color-bg-sidebar: var(--bg-sidebar);
   --color-bg-input: var(--bg-input);
+  --color-bg-surface: var(--bg-surface);
 
   --color-text: var(--text);
   --color-text-secondary: var(--text-secondary);

@@ -36,9 +36,9 @@ export function StatusBar() {
   }, [output]);
 
   return (
-    <div className="flex items-center justify-between h-[24px] px-3.5 bg-bg-titlebar border-t border-border-subtle select-none shrink-0 relative">
+    <div className="flex items-center justify-between h-[26px] px-4 bg-bg-titlebar/80 border-t border-border-subtle/40 select-none shrink-0 relative">
       {/* Left — input stats */}
-      <div className="flex items-center gap-2.5 text-[10px] leading-none text-text-faint tabular-nums tracking-wide">
+      <div className="flex items-center gap-3 text-[10px] leading-none text-text-muted tabular-nums tracking-wide">
         <span>{chars.toLocaleString()} chars</span>
         <Dot />
         <span>{words.toLocaleString()} words</span>
@@ -47,21 +47,24 @@ export function StatusBar() {
       </div>
 
       {/* Center — execution time */}
-      <div className="absolute left-1/2 -translate-x-1/2 text-[10px] leading-none text-text-faint/60 tabular-nums tracking-wide">
+      <div className="absolute left-1/2 -translate-x-1/2 text-[10px] leading-none tabular-nums tracking-wide">
         {execMs !== null && (
-          <span>{formatExecTime(execMs)}</span>
+          <span className="text-text-muted flex items-center gap-1.5">
+            <TimerIcon />
+            {formatExecTime(execMs)}
+          </span>
         )}
       </div>
 
       {/* Right — output size + copy */}
-      <div className="flex items-center gap-2.5 text-[10px] leading-none text-text-faint tabular-nums tracking-wide">
+      <div className="flex items-center gap-3 text-[10px] leading-none text-text-muted tabular-nums tracking-wide">
         {output && (
           <>
             <span>{formatBytes(outputBytes)}</span>
             <Dot />
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1 text-text-faint hover:text-text-muted transition-colors duration-150 cursor-pointer"
+              className="flex items-center gap-1.5 text-text-muted hover:text-text-muted transition-colors duration-150 cursor-pointer"
             >
               {copied ? <CheckIcon /> : <CopyIcon />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -74,7 +77,16 @@ export function StatusBar() {
 }
 
 function Dot() {
-  return <span className="text-text-faint/30 text-[8px]">·</span>;
+  return <span className="text-text-faint text-[6px]">|</span>;
+}
+
+function TimerIcon() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
 }
 
 function CopyIcon() {

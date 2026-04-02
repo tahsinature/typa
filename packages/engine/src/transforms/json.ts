@@ -18,7 +18,7 @@ registerTransform({
   description: 'Remove all whitespace from JSON',
   category: 'JSON',
   inputViews: ['raw-input'],
-  outputViews: jsonOutputViews,
+  outputViews: ['raw-output'],
   fn: (input) => JSON.stringify(JSON.parse(input)),
 });
 

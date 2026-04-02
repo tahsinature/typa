@@ -45,6 +45,21 @@ export function App() {
         const idx = parseInt(e.key) - 1;
         if (idx < tabs.length) useTabStore.getState().setActiveTab(tabs[idx].id);
       }
+      // Tabs: ⌘⇧[ / ⌘PageUp prev, ⌘⇧] / ⌘PageDown next
+      if ((mod && e.shiftKey && !e.altKey && e.code === 'BracketLeft') || (mod && !e.altKey && e.key === 'PageUp')) {
+        e.preventDefault();
+        const { tabs, activeTabId, setActiveTab } = useTabStore.getState();
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const prev = (idx - 1 + tabs.length) % tabs.length;
+        setActiveTab(tabs[prev].id);
+      }
+      if ((mod && e.shiftKey && !e.altKey && e.code === 'BracketRight') || (mod && !e.altKey && e.key === 'PageDown')) {
+        e.preventDefault();
+        const { tabs, activeTabId, setActiveTab } = useTabStore.getState();
+        const idx = tabs.findIndex((t) => t.id === activeTabId);
+        const next = (idx + 1) % tabs.length;
+        setActiveTab(tabs[next].id);
+      }
 
       // Layout: ⌘L toggle
       if (mod && !e.shiftKey && (e.key === 'l' || e.key === 'L')) {

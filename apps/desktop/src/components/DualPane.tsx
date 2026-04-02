@@ -13,7 +13,7 @@ import { getInputViewsForTransform } from "@/widgets";
 
 function PaneHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between px-3.5 h-[34px] shrink-0 border-b border-border-subtle/80 bg-bg-secondary/30">
+    <div className="flex items-center justify-between px-3 h-[32px] shrink-0 border-b border-border-subtle/50 bg-bg-surface/60">
       {children}
     </div>
   );
@@ -25,10 +25,10 @@ function PaneLabel({ children, accentColor }: { children: React.ReactNode; accen
       {accentColor && (
         <span
           className="size-[5px] rounded-full"
-          style={{ background: accentColor }}
+          style={{ background: accentColor, boxShadow: `0 0 5px ${accentColor}30` }}
         />
       )}
-      <span className="text-[10.5px] text-text-faint font-semibold tracking-[0.06em] uppercase select-none">
+      <span className="text-[10px] text-text-muted font-semibold tracking-[0.08em] uppercase select-none">
         {children}
       </span>
     </div>
@@ -40,7 +40,7 @@ function ToolbarGroup({ children }: { children: React.ReactNode }) {
 }
 
 function ToolbarSep() {
-  return <div className="w-px h-3 bg-border-subtle mx-1" />;
+  return <div className="w-px h-3 bg-white/[0.06] mx-1" />;
 }
 
 /* -- Transform Error -- */
@@ -128,6 +128,8 @@ export function DualPane({ tabId }: { tabId: string }) {
     window.addEventListener('toggle-fullscreen', handler);
     return () => window.removeEventListener('toggle-fullscreen', handler);
   }, [tabId]);
+
+  if (!tab) return null;
 
   const inputs = tab?.inputs ?? [""];
   const output = tab?.output ?? "";
