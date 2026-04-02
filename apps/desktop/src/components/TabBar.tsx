@@ -281,6 +281,19 @@ function Tb({ onClick, tip, children }: { onClick: () => void; tip: string; chil
   );
 }
 
+function TypaLogo() {
+  return (
+    <div className="flex items-center justify-center w-[28px] h-[28px]" title="Typa">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 4C5.5 4 4 5.5 4 7v3c0 1-1 2-2 2 1 0 2 1 2 2v3c0 1.5 1.5 3 3 3" stroke="var(--cl-accent)" strokeWidth="2" />
+        <path d="M17 4c1.5 0 3 1.5 3 3v3c0 1 1 2 2 2-1 0-2 1-2 2v3c0 1.5-1.5 3-3 3" stroke="var(--cl-accent)" strokeWidth="2" />
+        <circle cx="9" cy="12" r="1.25" fill="var(--cl-accent)" />
+        <circle cx="15" cy="12" r="1.25" fill="var(--cl-accent)" />
+      </svg>
+    </div>
+  );
+}
+
 function SidebarIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
