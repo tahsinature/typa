@@ -44,6 +44,7 @@ interface NodePayload {
   w: number;
   h: number;
   highlight: "none" | "match" | "active" | "focus" | "selected";
+  originalValue: unknown;
   onRowClick?: (childKey: string) => void;
   onHeaderClick?: () => void;
   onParentClick?: () => void;
@@ -77,7 +78,7 @@ function parseJsonToGraph(data: unknown): { nodes: Node<NodePayload>[]; edges: E
       const rows: RowData[] = [{ key: null, val, type: value === null ? "null" : typeof value }];
       const w = textW(val);
       const h = HEADER_H + ROW_H;
-      nodes.push({ id, type: "jsonNode", position: { x: 0, y: 0 }, data: { label, rows, childKeys: [], w, h, highlight: "none" } });
+      nodes.push({ id, type: "jsonNode", position: { x: 0, y: 0 }, data: { label, rows, childKeys: [], w, h, highlight: "none", originalValue: value } });
       return;
     }
 
@@ -115,7 +116,7 @@ function parseJsonToGraph(data: unknown): { nodes: Node<NodePayload>[]; edges: E
     const h = HEADER_H + rows.length * ROW_H;
     const nodeLabel = isArr ? `${label} [${(value as unknown[]).length}]` : label;
 
-    nodes.push({ id, type: "jsonNode", position: { x: 0, y: 0 }, data: { label: nodeLabel, rows, childKeys, w, h, highlight: "none" } });
+    nodes.push({ id, type: "jsonNode", position: { x: 0, y: 0 }, data: { label: nodeLabel, rows, childKeys, w, h, highlight: "none", originalValue: value } });
 
     for (const child of children) {
       traverse(child.value, child.key, id, child.key);
@@ -158,6 +159,39 @@ function valColor(type: string, val: string, isDark: boolean): string {
 
 function keyColorVal(isDark: boolean): string {
   return isDark ? "#59b8ff" : "#761CEA";
+}
+
+/* ── Copy helpers ── */
+
+function useCopyFeedback() {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const copy = useCallback((text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    if (timeout.current) clearTimeout(timeout.current);
+    setCopiedKey(key);
+    timeout.current = setTimeout(() => setCopiedKey(null), 1200);
+  }, []);
+
+  return { copiedKey, copy };
+}
+
+function CopyCheck({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#34d058" strokeWidth="2.5" strokeLinecap="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function CopyIcon({ size = 11, color }: { size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
 }
 
 /* ── Custom Node ── */
@@ -267,8 +301,9 @@ function ChevronRight({ color }: { color: string }) {
 }
 
 function JsonNode({ data }: { data: NodePayload }) {
-  const { label, rows, childKeys, w, h, highlight, onRowClick, onHeaderClick, onParentClick, hasParent } = data;
+  const { label, rows, childKeys, w, h, highlight, originalValue, onRowClick, onHeaderClick, onParentClick, hasParent } = data;
   const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+  const { copiedKey, copy } = useCopyFeedback();
 
   const isArray = label.includes("[");
 
@@ -366,7 +401,35 @@ function JsonNode({ data }: { data: NodePayload }) {
           </span>
         )}
         <TypeBadge isArray={isArray} isDark={isDark} />
-        <span style={{ opacity: 0.9 }}>{label.replace(/\s*\[\d+\]/, "")}</span>
+        <span style={{ opacity: 0.9, flex: 1 }}>{label.replace(/\s*\[\d+\]/, "")}</span>
+        <span
+          onClick={(e) => {
+            e.stopPropagation();
+            copy(JSON.stringify(originalValue, null, 2), "__json__");
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(167,139,250,0.15)" : "rgba(167,139,250,0.1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"; }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 18,
+            height: 18,
+            borderRadius: 4,
+            marginLeft: 4,
+            cursor: "pointer",
+            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+            transition: "background 0.15s",
+            flexShrink: 0,
+          }}
+          title="Copy as JSON"
+        >
+          {copiedKey === "__json__" ? (
+            <CopyCheck size={10} />
+          ) : (
+            <CopyIcon size={10} color={isDark ? "#a78bfa" : "#7c3aed"} />
+          )}
+        </span>
       </div>
 
       {/* Rows */}
@@ -393,9 +456,39 @@ function JsonNode({ data }: { data: NodePayload }) {
           >
             {row.key !== null ? (
               <>
-                <span style={{ color: keyColorVal(isDark), flexShrink: 0, whiteSpace: "nowrap", fontSize: 11 }}>{row.key}</span>
+                <span className="group/key" style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0, whiteSpace: "nowrap" }}>
+                  <span style={{ color: keyColorVal(isDark), fontSize: 11 }}>{row.key}</span>
+                  <span
+                    className="invisible group-hover/key:visible cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copy(row.key!, row.key!);
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 14,
+                      height: 14,
+                      borderRadius: 3,
+                      ...(copiedKey === row.key ? { visibility: "visible" as const } : {}),
+                    }}
+                    title="Copy key"
+                  >
+                    {copiedKey === row.key ? <CopyCheck size={9} /> : <CopyIcon size={9} color={isDark ? "#666" : "#aaa"} />}
+                  </span>
+                </span>
                 <span style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0, whiteSpace: "nowrap", marginLeft: 12, color: valColor(row.type, row.val, isDark), fontSize: 11 }}>
-                  {row.val}
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      copy(String(row.val), `__val__${row.key}`);
+                    }}
+                    style={{ cursor: "pointer" }}
+                    title="Click to copy"
+                  >
+                    {copiedKey === `__val__${row.key}` ? <CopyCheck size={9} /> : row.val}
+                  </span>
                   {isChild && <ChevronRight color={isDark ? "rgba(89,184,255,0.5)" : "rgba(118,28,234,0.4)"} />}
                 </span>
               </>
@@ -675,23 +768,41 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
     }
   }, [activeIdx, matches, focusNode]);
 
-  const skip = useCallback(() => {
+  const skipNext = useCallback(() => {
     if (matches.length > 0) setActiveIdx((i) => (i + 1) % matches.length);
   }, [matches.length]);
 
+  const skipPrev = useCallback(() => {
+    if (matches.length > 0) setActiveIdx((i) => (i - 1 + matches.length) % matches.length);
+  }, [matches.length]);
+
   const searchRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setQuery("");
+    setActiveIdx(0);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "f") {
         e.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
+        setSearchOpen(true);
+        setTimeout(() => {
+          searchRef.current?.focus();
+          searchRef.current?.select();
+        });
+      }
+      if (e.key === "Escape" && searchOpen) {
+        e.preventDefault();
+        closeSearch();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [searchOpen, closeSearch]);
 
   // Force WebKit to re-rasterize nodes when pointer re-enters the diagram
   const containerRef = useRef<HTMLDivElement>(null);
@@ -713,27 +824,79 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
   return (
     <div ref={containerRef} className="json-diagram h-full w-full relative" style={{ backgroundColor: isDark ? "#141414" : "#f7f7f7" }}>
       {/* Search */}
-      <div className="absolute top-2 left-2 z-[10] flex items-center gap-1.5" style={{ cursor: "default" }}>
-        <div className="relative flex items-center">
-          <svg className="absolute left-2 text-text-faint pointer-events-none" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <circle cx="7" cy="7" r="5" /><path d="M11 11L14 14" />
-          </svg>
-          <input
-            ref={searchRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") skip(); }}
-            placeholder="Search nodes..."
-            className="h-[30px] w-[200px] rounded-md pl-7 pr-2 text-[12px] bg-bg-elevated text-text border border-border-subtle outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 placeholder:text-text-faint shadow-md"
-          />
+      {searchOpen && (
+        <div className="absolute top-2 left-2 z-[10] flex items-center gap-1 rounded-lg border shadow-md px-1.5 py-1"
+          style={{
+            background: isDark ? "rgba(30,30,34,0.95)" : "rgba(255,255,255,0.97)",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          }}
+        >
+          <div className="relative flex items-center">
+            <svg className="absolute left-2 pointer-events-none" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#666" : "#999"} strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="7" cy="7" r="5" /><path d="M11 11L14 14" />
+            </svg>
+            <input
+              ref={searchRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.shiftKey) skipPrev();
+                else if (e.key === "Enter") skipNext();
+                else if (e.key === "Escape") closeSearch();
+              }}
+              placeholder="Search nodes..."
+              className="h-[28px] w-[180px] rounded-md pl-7 pr-2 text-[12px] bg-transparent text-text outline-none placeholder:text-text-faint"
+            />
+          </div>
+          {query && (
+            <span className="text-[11px] px-1.5 tabular-nums" style={{ color: matches.length > 0 ? (isDark ? "#999" : "#666") : (isDark ? "#F85C50" : "#dc2626") }}>
+              {matches.length > 0 ? `${activeIdx + 1}/${matches.length}` : "No results"}
+            </span>
+          )}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={skipPrev}
+              disabled={matches.length === 0}
+              className="flex items-center justify-center w-6 h-6 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ transition: "background 0.15s" }}
+              onMouseEnter={(e) => { if (matches.length > 0) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              title="Previous match (Shift+Enter)"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#aaa" : "#555"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 10L8 6L4 10" />
+              </svg>
+            </button>
+            <button
+              onClick={skipNext}
+              disabled={matches.length === 0}
+              className="flex items-center justify-center w-6 h-6 rounded-md cursor-pointer disabled:opacity-30 disabled:cursor-default"
+              style={{ transition: "background 0.15s" }}
+              onMouseEnter={(e) => { if (matches.length > 0) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              title="Next match (Enter)"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#aaa" : "#555"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6L8 10L12 6" />
+              </svg>
+            </button>
+            <div style={{ width: 1, height: 16, background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", margin: "0 2px" }} />
+            <button
+              onClick={closeSearch}
+              className="flex items-center justify-center w-6 h-6 rounded-md cursor-pointer"
+              style={{ transition: "background 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              title="Close (Esc)"
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#aaa" : "#555"} strokeWidth="2" strokeLinecap="round">
+                <path d="M4 4L12 12M12 4L4 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        {query && (
-          <span className="text-[11px] text-text-muted bg-bg-elevated px-2 py-1 rounded-md border border-border-subtle shadow-sm">
-            {matches.length > 0 ? `${activeIdx + 1}/${matches.length}` : "0 results"}
-          </span>
-        )}
-      </div>
+      )}
 
       {/* Node path breadcrumb */}
       {selectedPath && (

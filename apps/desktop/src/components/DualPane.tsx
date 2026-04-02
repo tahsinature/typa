@@ -106,9 +106,8 @@ function ViewTab({ label, icon: Icon, active, disabled, errorTooltip, onClick }:
 
 /* -- Main Component -- */
 
-export function DualPane() {
-  const activeTabId = useTabStore((s) => s.activeTabId);
-  const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
+export function DualPane({ tabId }: { tabId: string }) {
+  const tab = useTabStore((s) => s.tabs.find((t) => t.id === tabId));
   const updateInput = useTabStore((s) => s.updateInput);
   const updateOutput = useTabStore((s) => s.updateOutput);
   const updateExecTime = useTabStore((s) => s.updateExecTime);
@@ -118,6 +117,17 @@ export function DualPane() {
   const [activeInputViewId, setActiveInputViewId] = useState<string | null>(null);
   const [activeOutputViewId, setActiveOutputViewId] = useState<string | null>(null);
   const [outputFullscreen, setOutputFullscreen] = useState(false);
+
+  // Listen for ⌘⇧⏎ fullscreen toggle (only active tab responds)
+  useEffect(() => {
+    const handler = () => {
+      if (useTabStore.getState().activeTabId === tabId) {
+        setOutputFullscreen((f) => !f);
+      }
+    };
+    window.addEventListener('toggle-fullscreen', handler);
+    return () => window.removeEventListener('toggle-fullscreen', handler);
+  }, [tabId]);
 
   const inputs = tab?.inputs ?? [""];
   const output = tab?.output ?? "";
@@ -164,21 +174,21 @@ export function DualPane() {
           if (!r || r.result === null) return "";
           return String(r.result);
         });
-        updateOutput(activeTabId, outputLines.join("\n"));
+        updateOutput(tabId, outputLines.join("\n"));
       } else {
         const t = getTransform(transformId);
         if (!t) return;
         try {
           const result = await t.fn(...texts);
-          updateOutput(activeTabId, result);
+          updateOutput(tabId, result);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
-          updateOutput(activeTabId, `Error: ${msg}`);
+          updateOutput(tabId, `Error: ${msg}`);
         }
       }
-      updateExecTime(activeTabId, performance.now() - start);
+      updateExecTime(tabId, performance.now() - start);
     },
-    [activeTabId, updateOutput, updateExecTime],
+    [tabId, updateOutput, updateExecTime],
   );
 
   useEffect(() => {
@@ -213,7 +223,7 @@ export function DualPane() {
                     )}
                   </PaneHeader>
                   <div className="flex-1 min-h-0 overflow-hidden">
-                    <activeInputView.component input={value} onInputChange={(v) => updateInput(activeTabId, idx, v)} theme={themeMode} />
+                    <activeInputView.component input={value} onInputChange={(v) => updateInput(tabId, idx, v)} theme={themeMode} />
                   </div>
                 </div>
               </Allotment.Pane>
@@ -236,7 +246,7 @@ export function DualPane() {
           )}
         </PaneHeader>
         <div className="flex-1 min-h-0 overflow-hidden">
-          <activeInputView.component input={inputs[0] ?? ""} onInputChange={(value) => updateInput(activeTabId, 0, value)} theme={themeMode} />
+          <activeInputView.component input={inputs[0] ?? ""} onInputChange={(value) => updateInput(tabId, 0, value)} theme={themeMode} />
         </div>
       </div>
     );
@@ -248,7 +258,7 @@ export function DualPane() {
       <PaneHeader>
         <PaneLabel accentColor={accentColor}>Output</PaneLabel>
         <ToolbarGroup>
-          <IconButton tooltip={outputFullscreen ? "Exit fullscreen" : "Fullscreen"} active={outputFullscreen} onClick={() => setOutputFullscreen((f) => !f)}>
+          <IconButton tooltip={outputFullscreen ? "Exit fullscreen ⌘⇧⏎" : "Fullscreen ⌘⇧⏎"} active={outputFullscreen} onClick={() => setOutputFullscreen((f) => !f)}>
             {outputFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
           </IconButton>
           {availableOutputViews.length > 1 && <ToolbarSep />}
