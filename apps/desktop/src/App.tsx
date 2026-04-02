@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -7,6 +7,7 @@ import { TabBar } from '@/components/TabBar';
 import { FileBar } from '@/components/FileBar';
 import { StatusBar } from '@/components/StatusBar';
 import { CommandPalette } from '@/components/CommandPalette';
+import { ShortcutsSheet } from '@/components/ShortcutsSheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 export function App() {
@@ -15,6 +16,8 @@ export function App() {
   const sidebarOpen = useSettingsStore((s) => s.sidebarOpen);
   const saveDocument = useDocumentStore((s) => s.save);
   const loadDocuments = useDocumentStore((s) => s.loadAll);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
 
   // Stable list of tab IDs for DualPane rendering — only grows/shrinks, never reorders
   const stableTabIdsRef = useRef<string[]>([]);
@@ -94,6 +97,12 @@ export function App() {
         window.dispatchEvent(new CustomEvent('toggle-fullscreen'));
       }
 
+      // Shortcuts sheet: ⌘/
+      if (mod && e.key === '/') {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+      }
+
       // Zoom: ⌘+= / ⌘+- / ⌘+0
       if (mod && (e.key === '=' || e.key === '+')) {
         e.preventDefault();
@@ -154,6 +163,7 @@ export function App() {
         <StatusBar />
       </div>
       <CommandPalette />
+      <ShortcutsSheet open={shortcutsOpen} onClose={closeShortcuts} />
     </TooltipProvider>
   );
 }
