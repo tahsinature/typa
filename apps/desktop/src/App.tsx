@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { DualPane } from '@/components/DualPane';
 import { TabBar } from '@/components/TabBar';
+import { FileBar } from '@/components/FileBar';
 import { StatusBar } from '@/components/StatusBar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,8 +12,22 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 export function App() {
   const tabs = useTabStore((s) => s.tabs);
   const activeTabId = useTabStore((s) => s.activeTabId);
+  const sidebarOpen = useSettingsStore((s) => s.sidebarOpen);
   const saveDocument = useDocumentStore((s) => s.save);
   const loadDocuments = useDocumentStore((s) => s.loadAll);
+
+  // Stable list of tab IDs for DualPane rendering — only grows/shrinks, never reorders
+  const stableTabIdsRef = useRef<string[]>([]);
+  const currentIds = new Set(tabs.map((t) => t.id));
+  // Add new tab IDs
+  for (const id of currentIds) {
+    if (!stableTabIdsRef.current.includes(id)) {
+      stableTabIdsRef.current.push(id);
+    }
+  }
+  // Remove closed tab IDs
+  stableTabIdsRef.current = stableTabIdsRef.current.filter((id) => currentIds.has(id));
+  const stableTabIds = stableTabIdsRef.current;
 
   useEffect(() => {
     loadDocuments();
@@ -59,6 +74,12 @@ export function App() {
         const idx = tabs.findIndex((t) => t.id === activeTabId);
         const next = (idx + 1) % tabs.length;
         setActiveTab(tabs[next].id);
+      }
+
+      // Sidebar: ⌘B toggle
+      if (mod && !e.shiftKey && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        useSettingsStore.getState().toggleSidebar();
       }
 
       // Layout: ⌘L toggle
@@ -111,16 +132,23 @@ export function App() {
       <div className="h-screen w-screen flex flex-col bg-bg text-text">
         <TabBar />
 
-        <div className="flex-1 min-h-0 relative">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className="h-full w-full"
-              style={{ display: tab.id === activeTabId ? 'contents' : 'none' }}
-            >
-              <DualPane tabId={tab.id} />
+        <div className="flex-1 min-h-0 flex">
+          {sidebarOpen && (
+            <div className="w-[200px] shrink-0 border-r border-border-subtle/60 overflow-hidden">
+              <FileBar />
             </div>
-          ))}
+          )}
+          <div className="flex-1 min-h-0 relative">
+            {stableTabIds.map((tabId) => (
+              <div
+                key={tabId}
+                className="h-full w-full"
+                style={{ display: tabId === activeTabId ? 'contents' : 'none' }}
+              >
+                <DualPane tabId={tabId} />
+              </div>
+            ))}
+          </div>
         </div>
 
         <StatusBar />

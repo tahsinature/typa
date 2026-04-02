@@ -20,11 +20,13 @@ interface SettingsStore {
   theme: 'dark' | 'light' | 'system';
   resolvedTheme: 'dark' | 'light';
   layout: 'horizontal' | 'vertical';
+  sidebarOpen: boolean;
   fontSize: number;
   paletteStyle: PaletteStyle;
   setTheme: (theme: 'dark' | 'light' | 'system') => void;
   toggleTheme: () => void;
   toggleLayout: () => void;
+  toggleSidebar: () => void;
   setPaletteStyle: (style: PaletteStyle) => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -35,6 +37,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   theme: 'system',
   resolvedTheme: getSystemTheme(),
   layout: 'horizontal',
+  sidebarOpen: false,
   fontSize: 13,
   paletteStyle: 'raycast',
 
@@ -52,6 +55,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   setPaletteStyle: (style) => set({ paletteStyle: style }),
+
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
 
   toggleLayout: () => {
     const { layout } = get();

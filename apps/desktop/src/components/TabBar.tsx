@@ -16,6 +16,8 @@ import {
 export function TabBar() {
   const layout = useSettingsStore((s) => s.layout);
   const toggleLayout = useSettingsStore((s) => s.toggleLayout);
+  const sidebarOpen = useSettingsStore((s) => s.sidebarOpen);
+  const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
   const theme = useSettingsStore((s) => s.resolvedTheme);
   const toggleTheme = useSettingsStore((s) => s.toggleTheme);
 
@@ -26,10 +28,12 @@ export function TabBar() {
   const closeTab = useTabStore((s) => s.closeTab);
   const renameTab = useTabStore((s) => s.renameTab);
   const reorderTabs = useTabStore((s) => s.reorderTabs);
+  const documents = useDocumentStore((s) => s.documents);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const dragIndexRef = useRef<number | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; side: 'left' | 'right' } | null>(null);
 
   function startRename(id: string, label: string) {
     setEditingId(id);
@@ -43,6 +47,7 @@ export function TabBar() {
   }
 
   function getTabLabel(tab: (typeof tabs)[0]) {
+    if (tab.customLabel) return tab.label;
     if (tab.selectedTransformId && tab.selectedTransformId !== 'calculator') {
       const t = getTransform(tab.selectedTransformId);
       if (t) return t.name;
@@ -62,56 +67,126 @@ export function TabBar() {
       {/* Traffic lights spacer */}
       <div className="w-[78px] h-full shrink-0 drag-region" data-tauri-drag-region />
 
+      {/* Sidebar toggle */}
+      <div className="shrink-0 no-drag mr-1">
+        <Tb onClick={toggleSidebar} tip={sidebarOpen ? 'Hide sidebar ⌘B' : 'Show sidebar ⌘B'}>
+          <SidebarIcon />
+        </Tb>
+      </div>
+
       {/* Tab strip */}
       <div className="flex-1 h-full flex items-center gap-1 px-0.5 min-w-0 overflow-x-auto scrollbar-none drag-region" data-tauri-drag-region>
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId;
           const meta = getTabMeta(tab);
+          const savedDoc = documents.find((d) => d.id === tab.id);
+          const isModified = savedDoc && (
+            savedDoc.inputs.join('\0') !== tab.inputs.join('\0') ||
+            savedDoc.output !== tab.output ||
+            savedDoc.selectedTransformId !== tab.selectedTransformId
+          );
+          const showDot = !!isModified;
+          const isEditing = editingId === tab.id;
+          const isBeingDragged = dragId === tab.id;
 
           return (
-            <button
+            <div
               key={tab.id}
-              draggable
-              onDragStart={() => { dragIndexRef.current = index; }}
-              onDragOver={(e) => { e.preventDefault(); }}
+              draggable={!isEditing}
+              onDragStart={(e) => {
+                setDragId(tab.id);
+                e.dataTransfer.effectAllowed = 'move';
+                // Use a transparent image so the browser ghost doesn't show
+                const img = new Image();
+                img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                e.dataTransfer.setDragImage(img, 0, 0);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const rect = e.currentTarget.getBoundingClientRect();
+                const side = e.clientX < rect.left + rect.width / 2 ? 'left' : 'right';
+                setDropTarget({ id: tab.id, side });
+              }}
+              onDragLeave={() => {
+                if (dropTarget?.id === tab.id) setDropTarget(null);
+              }}
               onDrop={() => {
-                if (dragIndexRef.current !== null && dragIndexRef.current !== index) {
-                  reorderTabs(dragIndexRef.current, index);
+                if (dragId && dragId !== tab.id && dropTarget) {
+                  const fromIndex = tabs.findIndex((t) => t.id === dragId);
+                  let toIndex = tabs.findIndex((t) => t.id === tab.id);
+                  if (fromIndex !== -1 && toIndex !== -1) {
+                    // If dropping on right side and dragging from before, adjust index
+                    if (dropTarget.side === 'right' && fromIndex < toIndex) {
+                      // toIndex stays same (splice behavior handles it)
+                    } else if (dropTarget.side === 'right' && fromIndex > toIndex) {
+                      toIndex += 1;
+                    }
+                    reorderTabs(fromIndex, toIndex);
+                  }
                 }
-                dragIndexRef.current = null;
+                setDragId(null);
+                setDropTarget(null);
+              }}
+              onDragEnd={() => {
+                setDragId(null);
+                setDropTarget(null);
               }}
               onMouseDown={(e) => { if (e.button === 1) { e.preventDefault(); closeTab(tab.id); } }}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { if (!isEditing) setActiveTab(tab.id); }}
               onDoubleClick={() => startRename(tab.id, getTabLabel(tab))}
+              role="tab"
               className={`
                 no-drag group relative flex items-center gap-2 h-[28px] px-3 rounded-lg
                 text-[11px] font-medium tracking-wide shrink-0 max-w-[200px]
-                transition-all duration-150 cursor-pointer select-none
-                ${isActive
-                  ? 'text-text'
-                  : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]'
+                cursor-pointer transition-opacity duration-100
+                ${isEditing ? '' : 'select-none'}
+                ${!savedDoc
+                  ? isActive
+                    ? 'text-text-secondary italic'
+                    : 'text-text-faint italic hover:text-text-muted'
+                  : isActive
+                    ? 'text-text'
+                    : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.04]'
                 }
               `}
-              style={isActive ? {
-                background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}06)`,
-                boxShadow: `0 0 0 1px ${meta.color}18, inset 0 1px 0 ${meta.color}10, 0 1px 3px rgba(0,0,0,0.15)`,
-              } : undefined}
+              style={{
+                opacity: isBeingDragged ? 0.4 : undefined,
+                ...(!savedDoc
+                  ? isActive
+                    ? { background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.12)' }
+                    : { border: '1px dashed rgba(255,255,255,0.06)' }
+                  : isActive
+                    ? {
+                        background: `linear-gradient(135deg, ${meta.color}12, ${meta.color}06)`,
+                        boxShadow: `0 0 0 1px ${meta.color}18, inset 0 1px 0 ${meta.color}10, 0 1px 3px rgba(0,0,0,0.15)`,
+                      }
+                    : undefined
+                ),
+              }}
             >
-              <span
-                className="size-[5px] rounded-full shrink-0 transition-all duration-150"
-                style={{
-                  background: meta.color,
-                  boxShadow: isActive ? `0 0 6px ${meta.color}50` : 'none',
-                }}
-              />
+              {/* Drop indicator */}
+              {dropTarget?.id === tab.id && dragId !== tab.id && (
+                <span
+                  className="absolute top-1 bottom-1 w-[2px] rounded-full bg-accent"
+                  style={{ [dropTarget.side === 'left' ? 'left' : 'right']: -2 }}
+                />
+              )}
 
-              {editingId === tab.id ? (
+              {showDot && (
+                <span className="size-[5px] rounded-full shrink-0 bg-text-muted" />
+              )}
+
+              {isEditing ? (
                 <input
                   autoFocus
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   onBlur={() => commitRename(tab.id)}
                   onKeyDown={(e) => {
+                    e.stopPropagation();
                     if (e.key === 'Enter') commitRename(tab.id);
                     if (e.key === 'Escape') setEditingId(null);
                   }}
@@ -124,6 +199,7 @@ export function TabBar() {
               {tabs.length > 1 && (
                 <span
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className={`
                     ml-auto flex items-center justify-center size-[16px] rounded-md
                     text-text-faint hover:text-text-muted hover:bg-white/[0.08]
@@ -134,7 +210,7 @@ export function TabBar() {
                   <CloseIcon />
                 </span>
               )}
-            </button>
+            </div>
           );
         })}
 
@@ -196,6 +272,14 @@ function Tb({ onClick, tip, children }: { onClick: () => void; tip: string; chil
       </TooltipTrigger>
       <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function SidebarIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M0 3a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H2a2 2 0 01-2-2V3zm5-1v12h9a1 1 0 001-1V3a1 1 0 00-1-1H5zM4 2H2a1 1 0 00-1 1v10a1 1 0 001 1h2V2z" />
+    </svg>
   );
 }
 

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export interface Tab {
   id: string;
   label: string;
+  customLabel: boolean;
   inputs: string[];
   output: string;
   selectedTransformId: string | null;
@@ -23,7 +24,11 @@ interface TabStore {
   reorderTabs: (fromIndex: number, toIndex: number) => void;
 }
 
-let nextId = 1;
+let nextLabel = 1;
+
+function genId(): string {
+  return `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 function getLastTransformId(): string {
   try {
@@ -34,10 +39,11 @@ function getLastTransformId(): string {
 }
 
 function createTab(): Tab {
-  const id = `tab-${nextId++}`;
+  const id = genId();
   return {
     id,
-    label: `Tab ${nextId - 1}`,
+    label: `Tab ${nextLabel++}`,
+    customLabel: false,
     inputs: [''],
     output: '',
     selectedTransformId: getLastTransformId(),
@@ -109,7 +115,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   renameTab: (id, label) => {
     set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === id ? { ...t, label } : t)),
+      tabs: s.tabs.map((t) => (t.id === id ? { ...t, label, customLabel: true } : t)),
     }));
   },
 

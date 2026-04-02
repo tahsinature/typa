@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { load, type Store } from '@tauri-apps/plugin-store';
 import type { Tab } from './tabStore';
+import { useTabStore } from './tabStore';
 
 export interface SavedDocument {
   id: string;
@@ -17,7 +18,9 @@ interface DocumentStore {
   loaded: boolean;
   save: (tab: Tab) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  removeAll: () => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
+  reorder: (fromIndex: number, toIndex: number) => Promise<void>;
   loadAll: () => Promise<void>;
 }
 
@@ -61,7 +64,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
     const doc: SavedDocument = {
       id: tab.id,
-      name: existing?.name ?? tab.label,
+      name: tab.customLabel ? tab.label : (existing?.name ?? tab.label),
       inputs: tab.inputs,
       output: tab.output,
       selectedTransformId: tab.selectedTransformId,
@@ -73,7 +76,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       ? documents.map((d) => (d.id === tab.id ? doc : d))
       : [doc, ...documents];
 
-    updated.sort((a, b) => b.updatedAt - a.updatedAt);
     set({ documents: updated });
 
     try {
@@ -92,11 +94,34 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     } catch {}
   },
 
+  removeAll: async () => {
+    set({ documents: [] });
+    try {
+      const s = await getStore();
+      await s.set('documents', []);
+    } catch {}
+  },
+
+  reorder: async (fromIndex, toIndex) => {
+    const docs = [...get().documents];
+    const [moved] = docs.splice(fromIndex, 1);
+    docs.splice(toIndex, 0, moved);
+    set({ documents: docs });
+
+    try {
+      const s = await getStore();
+      await s.set('documents', docs);
+    } catch {}
+  },
+
   rename: async (id, name) => {
     const updated = get().documents.map((d) =>
       d.id === id ? { ...d, name } : d,
     );
     set({ documents: updated });
+
+    // Sync to tab if open
+    useTabStore.getState().renameTab(id, name);
 
     try {
       const s = await getStore();
