@@ -247,8 +247,8 @@ type MultiJsonNode = {
 
 registerTransform({
   id: 'json-multi-view',
-  name: 'Multi JSON Viewer',
-  description: 'View multiple JSON nodes (paste formatted or minified JSON values)',
+  name: 'Multi JSON / NDJSON Viewer',
+  description: 'View multiple JSON nodes (NDJSON, paste formatted or minified JSON values)',
   category: 'JSON',
   inputViews: ['raw-input'],
   outputViews: ['json-multi', 'json-diagram', 'raw-output'],
