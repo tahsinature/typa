@@ -53,7 +53,33 @@ interface NodePayload {
 
 /* ── Parse JSON → nodes + edges ── */
 
+/* ── Detect multi-json wrapper from json-multi-view transform ── */
+
+interface MultiJsonNode {
+  index: number;
+  type: string;
+  value: unknown;
+}
+
+function isMultiJsonData(data: unknown): data is { nodes: MultiJsonNode[] } {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) return false;
+  const obj = data as Record<string, unknown>;
+  if (!Array.isArray(obj.nodes)) return false;
+  const nodes = obj.nodes as unknown[];
+  return nodes.length > 0 && nodes.every(
+    (n) => n !== null && typeof n === "object" && "index" in n && "type" in n && "value" in n
+  );
+}
+
 function parseJsonToGraph(data: unknown): { nodes: Node<NodePayload>[]; edges: Edge[] } {
+  // Multi-json: render each node's value as a separate root
+  if (isMultiJsonData(data)) {
+    return parseMultiRootGraph(data.nodes);
+  }
+  return parseSingleRootGraph(data, "root");
+}
+
+function parseSingleRootGraph(data: unknown, rootLabel: string): { nodes: Node<NodePayload>[]; edges: Edge[]; nid: number } {
   const nodes: Node<NodePayload>[] = [];
   const edges: Edge[] = [];
   let nid = 0;
@@ -123,7 +149,7 @@ function parseJsonToGraph(data: unknown): { nodes: Node<NodePayload>[]; edges: E
     }
   }
 
-  traverse(data, "root");
+  traverse(data, rootLabel);
 
   // Layout with dagre
   const g = new dagre.graphlib.Graph();
@@ -144,7 +170,49 @@ function parseJsonToGraph(data: unknown): { nodes: Node<NodePayload>[]; edges: E
     node.position = { x: pos.x - node.data.w / 2, y: pos.y - node.data.h / 2 };
   }
 
-  return { nodes, edges };
+  return { nodes, edges, nid };
+}
+
+function parseMultiRootGraph(multiNodes: MultiJsonNode[]): { nodes: Node<NodePayload>[]; edges: Edge[] } {
+  const allNodes: Node<NodePayload>[] = [];
+  const allEdges: Edge[] = [];
+  let yOffset = 0;
+  let globalNid = 0;
+
+  for (const mn of multiNodes) {
+    if (mn.type === "error") continue;
+
+    const label = `#${mn.index}`;
+    const { nodes, edges, nid } = parseSingleRootGraph(mn.value, label);
+
+    // Offset node IDs to avoid collisions across subgraphs
+    const idPrefix = `g${mn.index}_`;
+    const idMap = new Map<string, string>();
+    for (const node of nodes) {
+      const newId = `${idPrefix}${node.id}`;
+      idMap.set(node.id, newId);
+      node.id = newId;
+      node.position.y += yOffset;
+      allNodes.push(node);
+    }
+    for (const edge of edges) {
+      edge.id = `${idPrefix}${edge.id}`;
+      edge.source = idMap.get(edge.source) ?? edge.source;
+      edge.target = idMap.get(edge.target) ?? edge.target;
+      allEdges.push(edge);
+    }
+
+    // Calculate the bounding box height of this subgraph for vertical stacking
+    let maxY = 0;
+    for (const node of nodes) {
+      const bottom = node.position.y + node.data.h;
+      if (bottom > maxY) maxY = bottom;
+    }
+    yOffset = maxY + 60; // gap between subgraphs
+    globalNid += nid;
+  }
+
+  return { nodes: allNodes, edges: allEdges };
 }
 
 /* ── Colors ── */

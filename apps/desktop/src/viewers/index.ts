@@ -1,6 +1,7 @@
 import "./raw-output";
 import "./validation";
 import "./json-tree";
+import "./json-multi";
 import "./json-diagram";
 import "./table";
 import "./diff";

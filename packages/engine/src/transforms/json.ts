@@ -165,6 +165,126 @@ registerTransform({
   },
 });
 
+/**
+ * Split input into individual JSON values by tracking nesting depth.
+ * Handles both NDJSON (one value per line) and multi-line formatted JSON.
+ */
+function splitJsonValues(input: string): string[] {
+  const results: string[] = [];
+  const trimmed = input.trim();
+  if (!trimmed) return results;
+
+  let i = 0;
+  const len = trimmed.length;
+
+  while (i < len) {
+    // Skip whitespace between values
+    while (i < len && /\s/.test(trimmed[i])) i++;
+    if (i >= len) break;
+
+    const ch = trimmed[i];
+
+    // Object or array: track nesting
+    if (ch === '{' || ch === '[') {
+      const open = ch;
+      const close = ch === '{' ? '}' : ']';
+      let depth = 1;
+      let j = i + 1;
+      let inStr = false;
+
+      while (j < len && depth > 0) {
+        const c = trimmed[j];
+        if (inStr) {
+          if (c === '\\') { j++; } // skip escaped char
+          else if (c === '"') { inStr = false; }
+        } else {
+          if (c === '"') { inStr = true; }
+          else if (c === open) { depth++; }
+          else if (c === close) { depth--; }
+        }
+        j++;
+      }
+
+      results.push(trimmed.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    // String literal
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < len) {
+        if (trimmed[j] === '\\') { j += 2; continue; }
+        if (trimmed[j] === '"') { j++; break; }
+        j++;
+      }
+      results.push(trimmed.slice(i, j));
+      i = j;
+      continue;
+    }
+
+    // Number, boolean, null — read until delimiter
+    {
+      let j = i;
+      while (j < len && !/[\s,\]}]/.test(trimmed[j])) j++;
+      results.push(trimmed.slice(i, j));
+      i = j;
+    }
+  }
+
+  return results;
+}
+
+type MultiJsonNode = {
+  index: number;
+  type: string;
+  value: unknown;
+  keys?: number;
+  items?: number;
+  raw: string;
+  error?: string;
+};
+
+registerTransform({
+  id: 'json-multi-view',
+  name: 'Multi JSON Viewer',
+  description: 'View multiple JSON nodes (paste formatted or minified JSON values)',
+  category: 'JSON',
+  inputViews: ['raw-input'],
+  outputViews: ['json-multi', 'json-diagram', 'raw-output'],
+  fn: (input) => {
+    const chunks = splitJsonValues(input);
+    const nodes: MultiJsonNode[] = [];
+
+    let idx = 0;
+    for (const raw of chunks) {
+      idx++;
+      try {
+        const value = JSON.parse(raw);
+        const type = Array.isArray(value)
+          ? 'array'
+          : value === null
+            ? 'null'
+            : typeof value;
+        const node: MultiJsonNode = { index: idx, type, value, raw };
+        if (type === 'object') node.keys = Object.keys(value).length;
+        if (type === 'array') node.items = (value as unknown[]).length;
+        nodes.push(node);
+      } catch (e) {
+        nodes.push({
+          index: idx,
+          type: 'error',
+          value: null,
+          raw,
+          error: (e as Error).message,
+        });
+      }
+    }
+
+    return JSON.stringify({ nodes });
+  },
+});
+
 registerTransform({
   id: 'json-validate',
   name: 'Validate JSON',
