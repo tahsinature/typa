@@ -1,12 +1,16 @@
-.PHONY: dev build dmg clean size
+.PHONY: setup dev build dmg clean size
+
+# One-time setup on a fresh macOS machine (Xcode CLT, Rust, bun, deps)
+setup:
+	./scripts/setup-macos.sh
 
 # Run dev server
 dev:
-	cd apps/desktop && cargo tauri dev
+	cd apps/desktop && bunx tauri dev
 
 # Build release binary + bundles (DMG, .app)
 build:
-	cd apps/desktop && cargo tauri build --bundles dmg,app
+	cd apps/desktop && bunx tauri build --bundles dmg,app
 
 # Build and show DMG path + size
 dmg: build
