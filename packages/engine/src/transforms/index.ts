@@ -12,6 +12,7 @@ import './code-image';
 import './text-stats';
 import './image-canvas';
 import './port-manager';
+import './markdown-table';
 
 // Re-export registry
 export {

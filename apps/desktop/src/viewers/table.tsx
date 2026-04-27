@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, type ComponentType } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback, type ComponentType } from "react";
 import {
   type ColumnDef,
   type SortingState,
@@ -198,6 +198,75 @@ function RowActionsMenu({ row, groups }: { row: Record<string, unknown>; groups:
   );
 }
 
+/* ── Copy menu (TSV / CSV) ── */
+
+function escapeCSV(value: string): string {
+  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function getVisibleData(reactTable: ReturnType<typeof useReactTable<Record<string, unknown>>>) {
+  const cols = reactTable.getVisibleLeafColumns().map(c => c.id).filter(id => id !== "_actions");
+  const rows = reactTable.getFilteredRowModel().rows.map(row =>
+    cols.map(col => {
+      const val = row.original[col];
+      return val === null || val === undefined ? "" : String(val);
+    })
+  );
+  return { cols, rows };
+}
+
+function CopyMenu({ table: reactTable }: { table: ReturnType<typeof useReactTable<Record<string, unknown>>> }) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyAs = useCallback((format: "tsv" | "csv") => {
+    const { cols, rows } = getVisibleData(reactTable);
+    const sep = format === "tsv" ? "\t" : ",";
+    const formatCell = format === "csv" ? escapeCSV : (v: string) => v;
+
+    const header = cols.map(formatCell).join(sep);
+    const dataRows = rows.map(r => r.map(formatCell).join(sep));
+    const text = [header, ...dataRows].join("\n");
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(format);
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }, [reactTable]);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex items-center justify-center w-[28px] h-[28px] rounded-md text-text-faint hover:text-text-muted hover:bg-bg-hover/50 transition-colors"
+          title="Copy table"
+        >
+          {copied ? (
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="5" width="8" height="8" rx="1.5" />
+              <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+            </svg>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => copyAs("tsv")}>
+          Copy for Excel
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => copyAs("csv")}>
+          Copy as CSV
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /* ── Viewer ── */
 
 function TableViewer({ data, rowActions }: { data: unknown; theme?: "dark" | "light"; rowActions?: RowActionsConfig }) {
@@ -308,6 +377,7 @@ function TableViewer({ data, rowActions }: { data: unknown; theme?: "dark" | "li
             className="w-full h-[30px] rounded-md pl-8 pr-2.5 text-[12px] bg-bg-input text-text border border-border-subtle outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 placeholder:text-text-faint"
           />
         </div>
+        <CopyMenu table={table} />
         <ColumnsPopover table={table} />
       </div>
 
