@@ -18,6 +18,27 @@ fn copy_image_to_clipboard(rgba: Vec<u8>, width: u32, height: u32) -> Result<(),
     clipboard.set_image(img).map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+struct ClipboardImage {
+    rgba: Vec<u8>,
+    width: u32,
+    height: u32,
+}
+
+#[tauri::command]
+fn read_image_from_clipboard() -> Result<Option<ClipboardImage>, String> {
+    let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
+    match clipboard.get_image() {
+        Ok(img) => Ok(Some(ClipboardImage {
+            rgba: img.bytes.into_owned(),
+            width: img.width as u32,
+            height: img.height as u32,
+        })),
+        // Most "no image" errors surface as ContentNotAvailable; treat all read errors as "no image".
+        Err(_) => Ok(None),
+    }
+}
+
 #[tauri::command]
 async fn save_png_file(app: tauri::AppHandle, png_data: Vec<u8>) -> Result<(), String> {
     let (tx, rx) = std::sync::mpsc::channel();
@@ -351,6 +372,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             copy_image_to_clipboard,
+            read_image_from_clipboard,
             save_png_file,
             scan_ports,
             kill_process

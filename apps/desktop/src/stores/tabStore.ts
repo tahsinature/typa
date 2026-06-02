@@ -6,6 +6,9 @@ export interface Tab {
   customLabel: boolean;
   inputs: string[];
   output: string;
+  // Optional structured payload set by transforms that produce richer data
+  // (e.g. phone-format). Not persisted; rebuilt on input change.
+  outputData?: unknown;
   selectedTransformId: string | null;
   lastExecMs: number | null;
 }
@@ -17,7 +20,7 @@ interface TabStore {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   updateInput: (id: string, index: number, text: string) => void;
-  updateOutput: (id: string, text: string) => void;
+  updateOutput: (id: string, text: string, data?: unknown) => void;
   updateExecTime: (id: string, ms: number) => void;
   setSelectedTransform: (id: string, transformId: string | null) => void;
   renameTab: (id: string, label: string) => void;
@@ -90,9 +93,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
     }));
   },
 
-  updateOutput: (id, text) => {
+  updateOutput: (id, text, data) => {
     set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === id ? { ...t, output: text } : t)),
+      tabs: s.tabs.map((t) => (t.id === id ? { ...t, output: text, outputData: data } : t)),
     }));
   },
 

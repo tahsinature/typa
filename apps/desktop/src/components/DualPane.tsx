@@ -6,6 +6,12 @@ import { useEngineStore } from "@/stores/engineStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FullscreenIcon, ExitFullscreenIcon } from "@/components/Icons";
 import { IconButton } from "@/components/ui/icon-button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { getOutputViewsForTransform } from "@/viewers";
 import { getInputViewsForTransform } from "@/widgets";
 
@@ -41,6 +47,41 @@ function ToolbarGroup({ children }: { children: React.ReactNode }) {
 
 function ToolbarSep() {
   return <div className="w-px h-3 bg-white/[0.06] mx-1" />;
+}
+
+/* -- Preset Dropdown -- */
+
+function ChevronDownIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function PresetDropdown({ presets, activeId, onSelect }: { presets: { id: string; label: string }[]; activeId: string | undefined; onSelect: (id: string) => void }) {
+  const active = presets.find((p) => p.id === activeId) ?? presets[0];
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-1.5 h-[24px] px-2 rounded-md text-[11px] font-medium text-text-muted hover:text-text-secondary hover:bg-bg-hover/80 transition-all duration-150 cursor-pointer outline-none">
+          <span>{active.label}</span>
+          <ChevronDownIcon />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {presets.map((preset) => (
+          <DropdownMenuItem
+            key={preset.id}
+            onClick={() => onSelect(preset.id)}
+            className={preset.id === active.id ? "text-accent" : ""}
+          >
+            {preset.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 /* -- Transform Error -- */
@@ -116,6 +157,7 @@ export function DualPane({ tabId }: { tabId: string }) {
 
   const [activeInputViewId, setActiveInputViewId] = useState<string | null>(null);
   const [activeOutputViewId, setActiveOutputViewId] = useState<string | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [outputFullscreen, setOutputFullscreen] = useState(false);
 
   // Listen for ⌘⇧⏎ fullscreen toggle (only active tab responds)
@@ -133,6 +175,7 @@ export function DualPane({ tabId }: { tabId: string }) {
 
   const inputs = tab?.inputs ?? [""];
   const output = tab?.output ?? "";
+  const outputData = tab?.outputData;
   const selectedTransformId = tab?.selectedTransformId ?? "calculator";
 
   const transform = selectedTransformId !== "calculator" ? getTransform(selectedTransformId) : undefined;
@@ -150,23 +193,28 @@ export function DualPane({ tabId }: { tabId: string }) {
   const activeInputView = availableInputViews.find((v) => v.id === activeInputViewId) ?? availableInputViews[0] ?? null;
   const activeOutputView = availableOutputViews.find((v) => v.id === activeOutputViewId) ?? availableOutputViews[0] ?? null;
 
-  // Reset active view when transform changes
+  // Active preset — default to first defined
+  const presets = transform?.presets ?? [];
+  const activePreset = presets.find((p) => p.id === activePresetId) ?? presets[0] ?? null;
+
+  // Reset active view + preset when transform changes
   useEffect(() => {
     setActiveInputViewId(null);
     setActiveOutputViewId(null);
+    setActivePresetId(null);
   }, [selectedTransformId]);
 
   const parsedData = useMemo(() => {
     if (!activeOutputView) return null;
     try {
-      return activeOutputView.parse(output);
+      return activeOutputView.parse(output, outputData);
     } catch {
       return null;
     }
-  }, [activeOutputView, output]);
+  }, [activeOutputView, output, outputData]);
 
   const runTransform = useCallback(
-    async (transformId: string, ...texts: string[]) => {
+    async (transformId: string, presetId: string | null, ...texts: string[]) => {
       const start = performance.now();
       if (transformId === "calculator") {
         const engine = useEngineStore.getState().engine;
@@ -181,8 +229,13 @@ export function DualPane({ tabId }: { tabId: string }) {
         const t = getTransform(transformId);
         if (!t) return;
         try {
-          const result = await t.fn(...texts);
-          updateOutput(tabId, result);
+          const args = t.presets && presetId ? [...texts, presetId] : texts;
+          const result = await t.fn(...args);
+          if (typeof result === "string") {
+            updateOutput(tabId, result);
+          } else {
+            updateOutput(tabId, result.text, result.data);
+          }
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
           updateOutput(tabId, `Error: ${msg}`);
@@ -194,8 +247,8 @@ export function DualPane({ tabId }: { tabId: string }) {
   );
 
   useEffect(() => {
-    runTransform(selectedTransformId, ...inputs.slice(0, inputCount));
-  }, [inputs, inputCount, selectedTransformId, runTransform]);
+    runTransform(selectedTransformId, activePreset?.id ?? null, ...inputs.slice(0, inputCount));
+  }, [inputs, inputCount, selectedTransformId, activePreset?.id, runTransform]);
 
   const themeMode: "dark" | "light" = resolvedTheme === "dark" ? "dark" : "light";
   const hasInputPane = availableInputViews.length > 0;
@@ -263,6 +316,10 @@ export function DualPane({ tabId }: { tabId: string }) {
           <IconButton tooltip={outputFullscreen ? "Exit fullscreen ⌘⇧⏎" : "Fullscreen ⌘⇧⏎"} active={outputFullscreen} onClick={() => setOutputFullscreen((f) => !f)}>
             {outputFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
           </IconButton>
+          {presets.length > 0 && <ToolbarSep />}
+          {presets.length > 0 && (
+            <PresetDropdown presets={presets} activeId={activePreset?.id} onSelect={setActivePresetId} />
+          )}
           {availableOutputViews.length > 1 && <ToolbarSep />}
           {availableOutputViews.length > 1 && (
             <div

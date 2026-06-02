@@ -41,13 +41,27 @@ export const CATEGORY_META: Record<TransformCategory, CategoryMeta> = {
 
 /* ── Transforms ── */
 
+export interface TransformPreset {
+  id: string;
+  label: string;
+}
+
+// Transforms can return either a plain string (the user-visible text, used for
+// copy/save/StatusBar) or an object with both `text` and `data` — `data` is
+// structured information that rich views (e.g. tables) can consume directly,
+// without having to re-parse `text`.
+export type TransformResult = string | { text: string; data: unknown };
+
 export interface Transform {
   id: string;
   name: string;
   description: string;
   category: TransformCategory;
   inputs?: number;
-  fn: (...inputs: string[]) => string | Promise<string>;
+  // When set, the UI renders a preset selector and passes the active preset id
+  // to `fn` as the trailing string arg (after all inputs).
+  presets?: TransformPreset[];
+  fn: (...inputs: string[]) => TransformResult | Promise<TransformResult>;
   inputViews: string[];
   outputViews: string[];
 }

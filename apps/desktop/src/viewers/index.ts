@@ -20,6 +20,7 @@ import "./port-table";
 // import "./image-canvas-fabric";
 import "./image-canvas-excalidraw";
 // import "./image-canvas-tldraw";
+import "./image-inspector";
 
 export { getOutputViewsForTransform, registerOutputView } from "./registry";
 export type { OutputViewConfig } from "./registry";

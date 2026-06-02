@@ -11,8 +11,10 @@ import './mermaid';
 import './code-image';
 import './text-stats';
 import './image-canvas';
+import './image-inspector';
 import './port-manager';
 import './markdown-table';
+import './phone';
 
 // Re-export registry
 export {

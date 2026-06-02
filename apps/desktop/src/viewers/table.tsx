@@ -450,14 +450,14 @@ export function createTableView(config: {
   id: string;
   name: string;
   icon?: ComponentType;
-  parse?: (output: string) => unknown;
+  parse?: (output: string, richData?: unknown) => unknown;
   rowActions: RowActionsConfig;
 }) {
   registerOutputView({
     id: config.id,
     name: config.name,
     icon: config.icon ?? TableIcon,
-    parse: config.parse ?? ((output) => JSON.parse(output)),
+    parse: config.parse ?? ((output, richData) => richData ?? JSON.parse(output)),
     component: ({ data, theme }: { data: unknown; theme: "dark" | "light" }) => (
       <TableViewer data={data} theme={theme} rowActions={config.rowActions} />
     ),
@@ -467,7 +467,7 @@ export function createTableView(config: {
 /* ── Default table registration (no row actions) ── */
 
 registerOutputView({
-  parse: (output) => JSON.parse(output),
+  parse: (output, richData) => richData ?? JSON.parse(output),
   id: "table",
   name: "Table View",
   icon: TableIcon,

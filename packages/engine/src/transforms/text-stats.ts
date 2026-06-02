@@ -3,7 +3,7 @@ import { registerTransform } from './registry';
 registerTransform({
   id: 'text-stats',
   name: 'Character Counter',
-  description: 'Count characters, words, lines, sentences, and paragraphs',
+  description: 'Count characters, words, lines, sentences, paragraphs, and byte size',
   category: 'Text',
   inputViews: ['raw-input'],
   outputViews: ['counter'],
@@ -18,6 +18,7 @@ registerTransform({
     const paragraphs = input.trim()
       ? input.split(/\n\s*\n/).filter((p) => p.trim()).length
       : 0;
+    const bytes = new TextEncoder().encode(input).length;
 
     return JSON.stringify({
       characters,
@@ -26,6 +27,7 @@ registerTransform({
       lines,
       sentences,
       paragraphs,
+      bytes,
     });
   },
 });

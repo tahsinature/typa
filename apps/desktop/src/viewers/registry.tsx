@@ -5,7 +5,9 @@ export interface OutputViewConfig<T = any> {
   id: string;
   name: string;
   icon: ComponentType;
-  parse: (output: string) => T;
+  // `richData` is supplied by transforms that return { text, data } from `fn`
+  // (see TransformResult). Views can prefer it over re-parsing the output text.
+  parse: (output: string, richData?: unknown) => T;
   component: ComponentType<{ data: T; theme: "dark" | "light" }>;
 }
 

@@ -1,5 +1,5 @@
 export { TypaEngine } from './engine';
-export type { LineResult, EvaluationResult, Transform, TransformCategory, CategoryMeta } from './types';
+export type { LineResult, EvaluationResult, Transform, TransformPreset, TransformResult, TransformCategory, CategoryMeta } from './types';
 export { TRANSFORM_CATEGORIES, CATEGORY_META } from './types';
 export {
   registerTransform,
