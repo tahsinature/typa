@@ -166,20 +166,42 @@ registerTransform({
 });
 
 /**
+ * A JSON value extracted from the input, plus an optional label that came from
+ * a `//` or `#` comment line directly above it.
+ */
+type JsonChunk = { raw: string; label?: string };
+
+/**
  * Split input into individual JSON values by tracking nesting depth.
  * Handles both NDJSON (one value per line) and multi-line formatted JSON.
+ *
+ * A line starting with `//` or `#` between values is captured as the label for
+ * the next value (the nearest comment wins). Markers are only honored in the
+ * whitespace between values, so a `//` or `#` inside a string stays untouched.
  */
-function splitJsonValues(input: string): string[] {
-  const results: string[] = [];
+function splitJsonValues(input: string): JsonChunk[] {
+  const results: JsonChunk[] = [];
   const trimmed = input.trim();
   if (!trimmed) return results;
 
   let i = 0;
   const len = trimmed.length;
+  let label: string | undefined;
 
   while (i < len) {
-    // Skip whitespace between values
-    while (i < len && /\s/.test(trimmed[i])) i++;
+    // Skip whitespace and comment lines between values.
+    while (i < len) {
+      if (/\s/.test(trimmed[i])) { i++; continue; }
+      const isSlash = trimmed[i] === '/' && trimmed[i + 1] === '/';
+      const isHash = trimmed[i] === '#';
+      if (!isSlash && !isHash) break;
+      const start = i + (isSlash ? 2 : 1);
+      let end = start;
+      while (end < len && trimmed[end] !== '\n') end++;
+      const text = trimmed.slice(start, end).trim();
+      if (text) label = text;
+      i = end;
+    }
     if (i >= len) break;
 
     const ch = trimmed[i];
@@ -205,7 +227,8 @@ function splitJsonValues(input: string): string[] {
         j++;
       }
 
-      results.push(trimmed.slice(i, j));
+      results.push({ raw: trimmed.slice(i, j), label });
+      label = undefined;
       i = j;
       continue;
     }
@@ -218,7 +241,8 @@ function splitJsonValues(input: string): string[] {
         if (trimmed[j] === '"') { j++; break; }
         j++;
       }
-      results.push(trimmed.slice(i, j));
+      results.push({ raw: trimmed.slice(i, j), label });
+      label = undefined;
       i = j;
       continue;
     }
@@ -227,7 +251,8 @@ function splitJsonValues(input: string): string[] {
     {
       let j = i;
       while (j < len && !/[\s,\]}]/.test(trimmed[j])) j++;
-      results.push(trimmed.slice(i, j));
+      results.push({ raw: trimmed.slice(i, j), label });
+      label = undefined;
       i = j;
     }
   }
@@ -235,10 +260,31 @@ function splitJsonValues(input: string): string[] {
   return results;
 }
 
+/** Object keys recognized as a node's name, in priority order. */
+const NAME_KEYS = ['_name', '$name', '//'];
+
+/**
+ * If an object has a recognized name key with a non-empty string value, return
+ * that name plus a copy of the object with the key removed (so the meta key
+ * doesn't clutter the data tree). Otherwise return the object untouched.
+ */
+function extractObjectName(obj: Record<string, unknown>): { name?: string; value: Record<string, unknown> } {
+  for (const key of NAME_KEYS) {
+    const candidate = obj[key];
+    if (typeof candidate === 'string' && candidate.trim()) {
+      const value = { ...obj };
+      delete value[key];
+      return { name: candidate, value };
+    }
+  }
+  return { value: obj };
+}
+
 type MultiJsonNode = {
   index: number;
   type: string;
   value: unknown;
+  name?: string;
   keys?: number;
   items?: number;
   raw: string;
@@ -257,18 +303,30 @@ registerTransform({
     const nodes: MultiJsonNode[] = [];
 
     let idx = 0;
-    for (const raw of chunks) {
+    for (const { raw, label } of chunks) {
       idx++;
       try {
-        const value = JSON.parse(raw);
-        const type = Array.isArray(value)
+        const parsed = JSON.parse(raw);
+        const type = Array.isArray(parsed)
           ? 'array'
-          : value === null
+          : parsed === null
             ? 'null'
-            : typeof value;
+            : typeof parsed;
+
+        // A comment line wins as the name; otherwise an object may name itself
+        // via a recognized key, which is then stripped from the data tree.
+        let value: unknown = parsed;
+        let name = label;
+        if (type === 'object' && !name) {
+          const named = extractObjectName(parsed as Record<string, unknown>);
+          name = named.name;
+          value = named.value;
+        }
+
         const node: MultiJsonNode = { index: idx, type, value, raw };
-        if (type === 'object') node.keys = Object.keys(value).length;
-        if (type === 'array') node.items = (value as unknown[]).length;
+        if (name) node.name = name;
+        if (type === 'object') node.keys = Object.keys(value as Record<string, unknown>).length;
+        if (type === 'array') node.items = (parsed as unknown[]).length;
         nodes.push(node);
       } catch (e) {
         nodes.push({

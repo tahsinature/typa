@@ -8,6 +8,7 @@ interface JsonNode {
   index: number;
   type: string;
   value: unknown;
+  name?: string;
   keys?: number;
   items?: number;
   raw: string;
@@ -72,7 +73,7 @@ function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) 
     >
       {/* Header */}
       <div
-        className="w-full px-3 py-2 flex items-center gap-2"
+        className="w-full px-3 py-2 flex items-center gap-2 min-w-0"
         style={{
           cursor: isExpandable ? "pointer" : "default",
           borderBottom: collapsed ? "none" : "1px solid var(--cl-border-subtle)",
@@ -91,9 +92,16 @@ function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) 
             <path d="M2 3l3 3.5L8 3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
-        <span className="text-[11px] text-text-faint font-mono">#{node.index}</span>
-        <TypeBadge type={node.type} />
-        <SizeLabel node={node} />
+        <span className="text-[11px] text-text-faint font-mono shrink-0">#{node.index}</span>
+        {node.name && (
+          <span className="text-[13px] font-medium text-text truncate min-w-0" title={node.name}>
+            {node.name}
+          </span>
+        )}
+        <div className="flex items-center gap-2 shrink-0">
+          <TypeBadge type={node.type} />
+          <SizeLabel node={node} />
+        </div>
       </div>
 
       {/* Body */}
@@ -152,6 +160,16 @@ function SummaryBar({ nodes }: { nodes: JsonNode[] }) {
       <span className="font-medium text-text">{nodes.length} node{nodes.length !== 1 ? "s" : ""}</span>
       <span className="text-text-faint">&mdash;</span>
       <span>{parts.join(", ")}</span>
+      <span
+        className="ml-auto shrink-0 text-text-faint cursor-help"
+        title={'Name a node: put a "//" or "#" comment line above it, or add a _name / $name / "//" field inside it.'}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+      </span>
     </div>
   );
 }
@@ -161,8 +179,15 @@ function SummaryBar({ nodes }: { nodes: JsonNode[] }) {
 function MultiJsonViewer({ data, theme }: { data: MultiJsonData; theme: "dark" | "light" }) {
   if (!data?.nodes?.length) {
     return (
-      <div className="h-full flex items-center justify-center text-text-faint text-[13px]">
-        Paste NDJSON (one JSON value per line)
+      <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
+        <span className="text-text-faint text-[13px]">Paste NDJSON (one JSON value per line)</span>
+        <span className="text-text-faint text-[12px]">
+          Tip: put a{" "}
+          <code className="px-1 py-0.5 rounded bg-bg-secondary font-mono text-[11px] text-text-secondary">// label</code>{" "}
+          line above a node &mdash; or a{" "}
+          <code className="px-1 py-0.5 rounded bg-bg-secondary font-mono text-[11px] text-text-secondary">_name</code>{" "}
+          field &mdash; to name it.
+        </span>
       </div>
     );
   }
