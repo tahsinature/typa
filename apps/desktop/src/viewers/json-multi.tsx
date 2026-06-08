@@ -62,7 +62,7 @@ function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) 
 
   return (
     <div
-      className="rounded-lg overflow-hidden"
+      className="rounded-lg overflow-hidden shrink-0"
       style={{
         background: "var(--bg-secondary)",
         border: node.type === "error"
@@ -146,7 +146,7 @@ function SummaryBar({ nodes }: { nodes: JsonNode[] }) {
 
   return (
     <div
-      className="rounded-lg px-3 py-2 flex items-center gap-2 text-[12px] text-text-secondary"
+      className="rounded-lg px-3 py-2 flex items-center gap-2 text-[12px] text-text-secondary shrink-0"
       style={{ background: "var(--bg-secondary)", border: "1px solid var(--cl-border-subtle)" }}
     >
       <span className="font-medium text-text">{nodes.length} node{nodes.length !== 1 ? "s" : ""}</span>
