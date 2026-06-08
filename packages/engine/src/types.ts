@@ -61,6 +61,9 @@ export interface Transform {
   // When set, the UI renders a preset selector and passes the active preset id
   // to `fn` as the trailing string arg (after all inputs).
   presets?: TransformPreset[];
+  // Optional usage tips surfaced via a help button in the input pane. Each
+  // string may contain `code` spans delimited by backticks.
+  tips?: string[];
   fn: (...inputs: string[]) => TransformResult | Promise<TransformResult>;
   inputViews: string[];
   outputViews: string[];

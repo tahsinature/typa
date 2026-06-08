@@ -4,8 +4,9 @@ import { getTransform, CATEGORY_META } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useEngineStore } from "@/stores/engineStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { FullscreenIcon, ExitFullscreenIcon } from "@/components/Icons";
+import { FullscreenIcon, ExitFullscreenIcon, InfoIcon } from "@/components/Icons";
 import { IconButton } from "@/components/ui/icon-button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -81,6 +82,48 @@ function PresetDropdown({ presets, activeId, onSelect }: { presets: { id: string
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/* -- Input Tips -- */
+
+function renderTipText(tip: string) {
+  // Render backtick-delimited spans as styled inline code.
+  return tip.split("`").map((part, i) =>
+    i % 2 === 1 ? (
+      <code key={i} className="px-1 py-0.5 rounded bg-bg-secondary font-mono text-[11px] text-text">
+        {part}
+      </code>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
+function InputTips({ title, tips }: { title: string; tips: string[] }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <IconButton variant="subtle" aria-label={`${title} tips`}>
+          <InfoIcon />
+        </IconButton>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] max-w-[80vw]">
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+            {title} tips
+          </span>
+          <ul className="flex flex-col gap-1.5">
+            {tips.map((tip, i) => (
+              <li key={i} className="flex gap-2 text-[12px] leading-relaxed text-text-secondary">
+                <span className="text-text-faint select-none">&bull;</span>
+                <span className="min-w-0">{renderTipText(tip)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -292,11 +335,15 @@ export function DualPane({ tabId }: { tabId: string }) {
       <div className="flex flex-col h-full">
         <PaneHeader>
           <PaneLabel>Input</PaneLabel>
-          {availableInputViews.length > 1 && (
+          {(availableInputViews.length > 1 || (transform?.tips?.length ?? 0) > 0) && (
             <ToolbarGroup>
-              {availableInputViews.map((view) => (
-                <ViewTab key={view.id} label={view.name} icon={view.icon} active={activeInputView.id === view.id} onClick={() => setActiveInputViewId(view.id)} />
-              ))}
+              {availableInputViews.length > 1 &&
+                availableInputViews.map((view) => (
+                  <ViewTab key={view.id} label={view.name} icon={view.icon} active={activeInputView.id === view.id} onClick={() => setActiveInputViewId(view.id)} />
+                ))}
+              {transform?.tips && transform.tips.length > 0 && (
+                <InputTips title={transform.name} tips={transform.tips} />
+              )}
             </ToolbarGroup>
           )}
         </PaneHeader>

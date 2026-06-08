@@ -298,6 +298,11 @@ registerTransform({
   category: 'JSON',
   inputViews: ['raw-input'],
   outputViews: ['json-multi', 'json-diagram', 'raw-output'],
+  tips: [
+    'Name a node with a `// label` or `# label` line above it.',
+    'Or add a `_name`, `$name`, or `"//"` field inside an object — the key is hidden from the data.',
+    'Names show in each node’s header so you can tell records apart.',
+  ],
   fn: (input) => {
     const chunks = splitJsonValues(input);
     const nodes: MultiJsonNode[] = [];
