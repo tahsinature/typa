@@ -16,7 +16,8 @@ interface MultiNode {
 const multi = getTransform('json-multi-view')!;
 
 function run(input: string): MultiNode[] {
-  return (JSON.parse(multi.fn(input)) as { nodes: MultiNode[] }).nodes;
+  const result = multi.fn(input) as { text: string; data: { nodes: MultiNode[] } };
+  return result.data.nodes;
 }
 
 describe('json-multi-view: splitting', () => {

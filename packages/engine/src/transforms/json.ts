@@ -173,6 +173,18 @@ registerTransform({
  */
 type JsonChunk = { raw: string; start: number; end: number; label?: string };
 
+/* Character codes used by the scanner — comparing codes (charCodeAt) avoids the
+ * per-character regex tests and one-char string allocations that made scanning
+ * large inputs slow. */
+const CC_TAB = 9, CC_LF = 10, CC_CR = 13, CC_SPACE = 32;
+const CC_QUOTE = 34, CC_HASH = 35, CC_COMMA = 44, CC_SLASH = 47;
+const CC_LBRACK = 91, CC_BACKSLASH = 92, CC_RBRACK = 93;
+const CC_LBRACE = 123, CC_RBRACE = 125;
+
+function isJsonWhitespace(c: number): boolean {
+  return c === CC_SPACE || c === CC_LF || c === CC_TAB || c === CC_CR;
+}
+
 /**
  * Split input into individual JSON values by tracking nesting depth.
  * Handles both NDJSON (one value per line) and multi-line formatted JSON.
@@ -183,22 +195,20 @@ type JsonChunk = { raw: string; start: number; end: number; label?: string };
  */
 function splitJsonValues(input: string): JsonChunk[] {
   const results: JsonChunk[] = [];
-  if (!input.trim()) return results;
-
-  let i = 0;
   const len = input.length;
+  let i = 0;
   let label: string | undefined;
 
   while (i < len) {
     // Skip whitespace and comment lines between values.
     while (i < len) {
-      if (/\s/.test(input[i])) { i++; continue; }
-      const isSlash = input[i] === '/' && input[i + 1] === '/';
-      const isHash = input[i] === '#';
-      if (!isSlash && !isHash) break;
-      const cStart = i + (isSlash ? 2 : 1);
+      const c = input.charCodeAt(i);
+      if (isJsonWhitespace(c)) { i++; continue; }
+      const isComment = (c === CC_SLASH && input.charCodeAt(i + 1) === CC_SLASH) || c === CC_HASH;
+      if (!isComment) break;
+      const cStart = i + (c === CC_HASH ? 1 : 2);
       let cEnd = cStart;
-      while (cEnd < len && input[cEnd] !== '\n') cEnd++;
+      while (cEnd < len && input.charCodeAt(cEnd) !== CC_LF) cEnd++;
       const text = input.slice(cStart, cEnd).trim();
       if (text) label = text;
       i = cEnd;
@@ -206,25 +216,26 @@ function splitJsonValues(input: string): JsonChunk[] {
     if (i >= len) break;
 
     const start = i;
-    const ch = input[i];
+    const c0 = input.charCodeAt(i);
 
-    // Object or array: track nesting
-    if (ch === '{' || ch === '[') {
-      const open = ch;
-      const close = ch === '{' ? '}' : ']';
+    // Object or array: track nesting depth, skipping over string contents.
+    if (c0 === CC_LBRACE || c0 === CC_LBRACK) {
+      const close = c0 === CC_LBRACE ? CC_RBRACE : CC_RBRACK;
       let depth = 1;
       let j = i + 1;
       let inStr = false;
 
       while (j < len && depth > 0) {
-        const c = input[j];
+        const c = input.charCodeAt(j);
         if (inStr) {
-          if (c === '\\') { j++; } // skip escaped char
-          else if (c === '"') { inStr = false; }
-        } else {
-          if (c === '"') { inStr = true; }
-          else if (c === open) { depth++; }
-          else if (c === close) { depth--; }
+          if (c === CC_BACKSLASH) j++; // skip escaped char
+          else if (c === CC_QUOTE) inStr = false;
+        } else if (c === CC_QUOTE) {
+          inStr = true;
+        } else if (c === c0) {
+          depth++;
+        } else if (c === close) {
+          depth--;
         }
         j++;
       }
@@ -235,12 +246,13 @@ function splitJsonValues(input: string): JsonChunk[] {
       continue;
     }
 
-    // String literal
-    if (ch === '"') {
+    // String literal.
+    if (c0 === CC_QUOTE) {
       let j = i + 1;
       while (j < len) {
-        if (input[j] === '\\') { j += 2; continue; }
-        if (input[j] === '"') { j++; break; }
+        const c = input.charCodeAt(j);
+        if (c === CC_BACKSLASH) { j += 2; continue; }
+        if (c === CC_QUOTE) { j++; break; }
         j++;
       }
       results.push({ raw: input.slice(start, j), start, end: j, label });
@@ -249,14 +261,16 @@ function splitJsonValues(input: string): JsonChunk[] {
       continue;
     }
 
-    // Number, boolean, null — read until delimiter
-    {
-      let j = i;
-      while (j < len && !/[\s,\]}]/.test(input[j])) j++;
-      results.push({ raw: input.slice(start, j), start, end: j, label });
-      label = undefined;
-      i = j;
+    // Number, boolean, null — read until whitespace or a delimiter.
+    let j = i;
+    while (j < len) {
+      const c = input.charCodeAt(j);
+      if (isJsonWhitespace(c) || c === CC_COMMA || c === CC_RBRACK || c === CC_RBRACE) break;
+      j++;
     }
+    results.push({ raw: input.slice(start, j), start, end: j, label });
+    label = undefined;
+    i = j;
   }
 
   return results;
@@ -412,7 +426,10 @@ registerTransform({
       }
     }
 
-    return JSON.stringify({ nodes });
+    // Return both text (for raw-output / copy) and structured data, so the
+    // multi-view can consume `data` directly instead of re-parsing the text.
+    const payload = { nodes };
+    return { text: JSON.stringify(payload), data: payload };
   },
 });
 

@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { JsonViewer } from "@textea/json-viewer";
 import { setNodeField, type NodeStatusOption, type Transform } from "@typa/engine";
 import { registerOutputView } from "./registry";
@@ -60,33 +61,35 @@ function SizeLabel({ node }: { node: JsonNode }) {
 
 /* -- Node Card -- */
 
-function NodeCard({
+const NodeCard = memo(function NodeCard({
   node,
   theme,
   options,
+  collapsed,
+  onToggle,
   onSetStatus,
-  cardRef,
 }: {
   node: JsonNode;
   theme: "dark" | "light";
   options?: NodeStatusOption[];
+  collapsed: boolean;
+  onToggle: (index: number, collapsed: boolean) => void;
   onSetStatus?: (index: number, value: string | null) => void;
-  cardRef?: (el: HTMLDivElement | null) => void;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
   const isExpandable = node.type === "object" || node.type === "array";
   const statusColor = statusOption(options ?? [], node.status)?.color;
 
   return (
     <div
-      ref={cardRef}
-      className="rounded-lg overflow-hidden shrink-0"
+      className="rounded-lg overflow-hidden"
       style={{
         background: "var(--bg-secondary)",
         border: node.type === "error"
           ? "1px solid rgba(248, 81, 73, 0.5)"
           : "1px solid var(--cl-border-subtle)",
-        borderLeft: statusColor ? `3px solid ${statusColor}` : undefined,
+        // Status accent as an inset shadow (not a borderLeft longhand) so it
+        // never conflicts with the `border` shorthand and wipes the left edge.
+        boxShadow: statusColor ? `inset 3px 0 0 0 ${statusColor}` : undefined,
       }}
     >
       {/* Header */}
@@ -96,7 +99,7 @@ function NodeCard({
           cursor: isExpandable ? "pointer" : "default",
           borderBottom: collapsed ? "none" : "1px solid var(--cl-border-subtle)",
         }}
-        onClick={() => isExpandable && setCollapsed(!collapsed)}
+        onClick={() => isExpandable && onToggle(node.index, collapsed)}
       >
         {isExpandable && (
           <svg
@@ -134,7 +137,9 @@ function NodeCard({
         <div className="px-3 py-2" style={{ opacity: node.status ? 0.55 : undefined }}>
           {node.type === "error" ? (
             <div className="flex flex-col gap-1">
-              <code className="text-[12px] font-mono text-text-secondary break-all">{node.raw}</code>
+              <code className="text-[12px] font-mono text-text-secondary break-all">
+                {node.raw.length > 2000 ? `${node.raw.slice(0, 2000)}… (truncated)` : node.raw}
+              </code>
               <span className="text-[11px] font-mono" style={{ color: "var(--cl-danger)" }}>
                 {node.error}
               </span>
@@ -160,7 +165,7 @@ function NodeCard({
       )}
     </div>
   );
-}
+});
 
 /* -- Summary Bar -- */
 
@@ -212,8 +217,9 @@ function MultiJsonViewer({
   const canMark = !!(statusConfig && options.length > 0 && typeof input === "string" && onInputChange);
 
   const [filter, setFilter] = useState<string | null>(null);
-  const [jumpCursor, setJumpCursor] = useState(0);
-  const cardRefs = useRef(new Map<number, HTMLDivElement>());
+  const [collapsedOverride, setCollapsedOverride] = useState<Map<number, boolean>>(() => new Map());
+  const [jumpPos, setJumpPos] = useState(-1);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const nodes = data?.nodes ?? [];
 
@@ -237,6 +243,32 @@ function MultiJsonViewer({
     return nodes.filter((n) => n.status === filter);
   }, [nodes, canMark, filter]);
 
+  // Only on-screen cards are mounted — thousands of nodes stay smooth.
+  const virtualizer = useVirtualizer({
+    count: displayedNodes.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 52,
+    overscan: 8,
+    gap: 12,
+    getItemKey: (index) => displayedNodes[index]?.index ?? index,
+  });
+
+  const setStatus = useCallback(
+    (index: number, value: string | null) => {
+      if (typeof input !== "string" || !onInputChange) return;
+      onInputChange(setNodeField(input, index, field, value ?? undefined));
+    },
+    [input, onInputChange, field],
+  );
+
+  const toggleCollapsed = useCallback((index: number, currentlyCollapsed: boolean) => {
+    setCollapsedOverride((prev) => {
+      const next = new Map(prev);
+      next.set(index, !currentlyCollapsed);
+      return next;
+    });
+  }, []);
+
   if (!nodes.length) {
     return (
       <div className="h-full flex items-center justify-center text-text-faint text-[13px]">
@@ -245,50 +277,66 @@ function MultiJsonViewer({
     );
   }
 
-  const setStatus = (index: number, value: string | null) => {
-    if (typeof input !== "string" || !onInputChange) return;
-    onInputChange(setNodeField(input, index, field, value ?? undefined));
-  };
+  // Large lists default to collapsed (cheap header-only rows); expand per node.
+  const bulkCollapsed = displayedNodes.length > 50;
 
-  const unmarked = displayedNodes.filter((n) => n.type === "object" && !n.status);
   const jumpNext = () => {
-    if (!unmarked.length) return;
-    const next = unmarked.find((n) => n.index > jumpCursor) ?? unmarked[0];
-    setJumpCursor(next.index);
-    cardRefs.current.get(next.index)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const positions: number[] = [];
+    displayedNodes.forEach((n, idx) => {
+      if (n.type === "object" && !n.status) positions.push(idx);
+    });
+    if (!positions.length) return;
+    const next = positions.find((p) => p > jumpPos) ?? positions[0];
+    setJumpPos(next);
+    virtualizer.scrollToIndex(next, { align: "start" });
   };
+  const jumpDisabled = !displayedNodes.some((n) => n.type === "object" && !n.status);
 
   return (
-    <div className="h-full overflow-auto p-4 flex flex-col gap-3" style={{ backgroundColor: "var(--bg)" }}>
-      <SummaryBar
-        nodes={nodes}
-        extra={
-          canMark ? (
-            <StatusSummary
-              counts={counts}
-              left={left}
-              options={options}
-              filter={filter}
-              onFilter={setFilter}
-              onJumpNext={jumpNext}
-              jumpDisabled={unmarked.length === 0}
-            />
-          ) : undefined
-        }
-      />
-      {displayedNodes.map((node) => (
-        <NodeCard
-          key={node.index}
-          node={node}
-          theme={theme}
-          options={canMark ? options : undefined}
-          onSetStatus={canMark ? setStatus : undefined}
-          cardRef={(el) => {
-            if (el) cardRefs.current.set(node.index, el);
-            else cardRefs.current.delete(node.index);
-          }}
+    <div className="h-full flex flex-col" style={{ backgroundColor: "var(--bg)" }}>
+      <div className="shrink-0 px-4 pt-4">
+        <SummaryBar
+          nodes={nodes}
+          extra={
+            canMark ? (
+              <StatusSummary
+                counts={counts}
+                left={left}
+                options={options}
+                filter={filter}
+                onFilter={setFilter}
+                onJumpNext={jumpNext}
+                jumpDisabled={jumpDisabled}
+              />
+            ) : undefined
+          }
         />
-      ))}
+      </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          {virtualizer.getVirtualItems().map((vi) => {
+            const node = displayedNodes[vi.index];
+            const collapsed = collapsedOverride.get(node.index) ?? bulkCollapsed;
+            return (
+              <div
+                key={node.index}
+                data-index={vi.index}
+                ref={virtualizer.measureElement}
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${vi.start}px)` }}
+              >
+                <NodeCard
+                  node={node}
+                  theme={theme}
+                  options={canMark ? options : undefined}
+                  collapsed={collapsed}
+                  onToggle={toggleCollapsed}
+                  onSetStatus={canMark ? setStatus : undefined}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -309,7 +357,7 @@ function MultiJsonIcon() {
 registerOutputView({
   id: "json-multi",
   name: "Multi View",
-  parse: (output): MultiJsonData => JSON.parse(output),
+  parse: (output, richData): MultiJsonData => (richData as MultiJsonData | undefined) ?? JSON.parse(output),
   icon: MultiJsonIcon,
   component: MultiJsonViewer,
 });

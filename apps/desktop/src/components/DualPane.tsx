@@ -290,7 +290,14 @@ export function DualPane({ tabId }: { tabId: string }) {
   );
 
   useEffect(() => {
-    runTransform(selectedTransformId, activePreset?.id ?? null, ...inputs.slice(0, inputCount));
+    // Debounce large inputs so each keystroke doesn't re-parse everything;
+    // small inputs run immediately to stay snappy.
+    const total = inputs.reduce((n, s) => n + s.length, 0);
+    const delay = total > 50_000 ? 150 : 0;
+    const handle = setTimeout(() => {
+      runTransform(selectedTransformId, activePreset?.id ?? null, ...inputs.slice(0, inputCount));
+    }, delay);
+    return () => clearTimeout(handle);
   }, [inputs, inputCount, selectedTransformId, activePreset?.id, runTransform]);
 
   const themeMode: "dark" | "light" = resolvedTheme === "dark" ? "dark" : "light";
