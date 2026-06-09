@@ -84,7 +84,7 @@ function NodeCard({
       style={{
         background: "var(--bg-secondary)",
         border: node.type === "error"
-          ? "1px solid rgba(248, 81, 73, 0.2)"
+          ? "1px solid rgba(248, 81, 73, 0.5)"
           : "1px solid var(--cl-border-subtle)",
         borderLeft: statusColor ? `3px solid ${statusColor}` : undefined,
       }}

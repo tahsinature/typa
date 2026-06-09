@@ -2,7 +2,10 @@ use arboard::{Clipboard, ImageData};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::process::Command as StdCommand;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use sysinfo::System;
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
 /* ── Existing commands ── */
@@ -363,6 +366,44 @@ fn kill_process(pid: u32) -> Result<(), String> {
     Ok(())
 }
 
+/* ── Windows ── */
+
+/// Labels for windows opened at runtime; "main" is the startup window.
+static WINDOW_COUNTER: AtomicUsize = AtomicUsize::new(2);
+
+/// Open a fresh, independent app window (its own tabs). Mirrors the main
+/// window's size and macOS title-bar style, cascaded from the focused window.
+fn open_new_window(app: &tauri::AppHandle) {
+    let label = format!("win-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed));
+
+    let mut builder = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("index.html".into()))
+        .title("Typa")
+        .inner_size(1000.0, 660.0)
+        .min_inner_size(680.0, 400.0);
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
+
+    // Cascade from the focused window so new windows don't stack exactly.
+    if let Some(focused) = app
+        .webview_windows()
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+    {
+        if let Ok(pos) = focused.outer_position() {
+            builder = builder.position((pos.x + 32) as f64, (pos.y + 32) as f64);
+        }
+    }
+
+    if let Err(e) = builder.build() {
+        eprintln!("failed to open new window: {e}");
+    }
+}
+
 /* ── App Entry ── */
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -370,6 +411,54 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            // Explicit app menu: re-adds the standard items (so Quit / copy /
+            // paste stay intact) plus File → New Window. We intentionally do NOT
+            // bind ⌘W here — that stays the in-app "close tab" shortcut.
+            let new_window = MenuItemBuilder::new("New Window")
+                .id("new_window")
+                .accelerator("CmdOrCtrl+N")
+                .build(app)?;
+
+            let app_menu = SubmenuBuilder::new(app, "Typa")
+                .about(None)
+                .separator()
+                .services()
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+
+            let file_menu = SubmenuBuilder::new(app, "File").item(&new_window).build()?;
+
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
+            let window_menu = SubmenuBuilder::new(app, "Window").minimize().build()?;
+
+            let menu = MenuBuilder::new(app)
+                .items(&[&app_menu, &file_menu, &edit_menu, &window_menu])
+                .build()?;
+            app.set_menu(menu)?;
+
+            app.on_menu_event(move |app, event| {
+                if event.id() == new_window.id() {
+                    open_new_window(app);
+                }
+            });
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             copy_image_to_clipboard,
             read_image_from_clipboard,
