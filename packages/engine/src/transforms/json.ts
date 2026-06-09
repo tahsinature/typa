@@ -1,4 +1,5 @@
 import { registerTransform } from './registry';
+import type { NodeStatusConfig } from '../types';
 
 const jsonOutputViews = ['raw-output', 'json-tree', 'json-diagram', 'table'];
 
@@ -166,10 +167,11 @@ registerTransform({
 });
 
 /**
- * A JSON value extracted from the input, plus an optional label that came from
- * a `//` or `#` comment line directly above it.
+ * A JSON value extracted from the input: its raw text, the `[start, end)`
+ * offsets it occupies in the original input (used to patch a single node in
+ * place), and an optional label from a `//` or `#` comment line above it.
  */
-type JsonChunk = { raw: string; label?: string };
+type JsonChunk = { raw: string; start: number; end: number; label?: string };
 
 /**
  * Split input into individual JSON values by tracking nesting depth.
@@ -181,30 +183,30 @@ type JsonChunk = { raw: string; label?: string };
  */
 function splitJsonValues(input: string): JsonChunk[] {
   const results: JsonChunk[] = [];
-  const trimmed = input.trim();
-  if (!trimmed) return results;
+  if (!input.trim()) return results;
 
   let i = 0;
-  const len = trimmed.length;
+  const len = input.length;
   let label: string | undefined;
 
   while (i < len) {
     // Skip whitespace and comment lines between values.
     while (i < len) {
-      if (/\s/.test(trimmed[i])) { i++; continue; }
-      const isSlash = trimmed[i] === '/' && trimmed[i + 1] === '/';
-      const isHash = trimmed[i] === '#';
+      if (/\s/.test(input[i])) { i++; continue; }
+      const isSlash = input[i] === '/' && input[i + 1] === '/';
+      const isHash = input[i] === '#';
       if (!isSlash && !isHash) break;
-      const start = i + (isSlash ? 2 : 1);
-      let end = start;
-      while (end < len && trimmed[end] !== '\n') end++;
-      const text = trimmed.slice(start, end).trim();
+      const cStart = i + (isSlash ? 2 : 1);
+      let cEnd = cStart;
+      while (cEnd < len && input[cEnd] !== '\n') cEnd++;
+      const text = input.slice(cStart, cEnd).trim();
       if (text) label = text;
-      i = end;
+      i = cEnd;
     }
     if (i >= len) break;
 
-    const ch = trimmed[i];
+    const start = i;
+    const ch = input[i];
 
     // Object or array: track nesting
     if (ch === '{' || ch === '[') {
@@ -215,7 +217,7 @@ function splitJsonValues(input: string): JsonChunk[] {
       let inStr = false;
 
       while (j < len && depth > 0) {
-        const c = trimmed[j];
+        const c = input[j];
         if (inStr) {
           if (c === '\\') { j++; } // skip escaped char
           else if (c === '"') { inStr = false; }
@@ -227,7 +229,7 @@ function splitJsonValues(input: string): JsonChunk[] {
         j++;
       }
 
-      results.push({ raw: trimmed.slice(i, j), label });
+      results.push({ raw: input.slice(start, j), start, end: j, label });
       label = undefined;
       i = j;
       continue;
@@ -237,11 +239,11 @@ function splitJsonValues(input: string): JsonChunk[] {
     if (ch === '"') {
       let j = i + 1;
       while (j < len) {
-        if (trimmed[j] === '\\') { j += 2; continue; }
-        if (trimmed[j] === '"') { j++; break; }
+        if (input[j] === '\\') { j += 2; continue; }
+        if (input[j] === '"') { j++; break; }
         j++;
       }
-      results.push({ raw: trimmed.slice(i, j), label });
+      results.push({ raw: input.slice(start, j), start, end: j, label });
       label = undefined;
       i = j;
       continue;
@@ -250,14 +252,51 @@ function splitJsonValues(input: string): JsonChunk[] {
     // Number, boolean, null — read until delimiter
     {
       let j = i;
-      while (j < len && !/[\s,\]}]/.test(trimmed[j])) j++;
-      results.push({ raw: trimmed.slice(i, j), label });
+      while (j < len && !/[\s,\]}]/.test(input[j])) j++;
+      results.push({ raw: input.slice(start, j), start, end: j, label });
       label = undefined;
       i = j;
     }
   }
 
   return results;
+}
+
+/**
+ * Add, update, or remove a top-level field on the object at `nodeIndex`
+ * (1-based) in NDJSON / multi-JSON `input`, returning the new input. Only the
+ * targeted object is re-serialized; every other node, comment line, and bit of
+ * whitespace is preserved. Passing `value === undefined` removes the key. If
+ * the node isn't an object (or doesn't exist), the input is returned unchanged.
+ */
+export function setNodeField(
+  input: string,
+  nodeIndex: number,
+  key: string,
+  value: string | number | boolean | null | undefined,
+): string {
+  const chunk = splitJsonValues(input)[nodeIndex - 1];
+  if (!chunk) return input;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(chunk.raw);
+  } catch {
+    return input;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return input;
+  }
+
+  const obj = parsed as Record<string, unknown>;
+  if (value === undefined) {
+    if (!(key in obj)) return input;
+    delete obj[key];
+  } else {
+    obj[key] = value;
+  }
+
+  return input.slice(0, chunk.start) + JSON.stringify(obj) + input.slice(chunk.end);
 }
 
 /** Object keys recognized as a node's name, in priority order. */
@@ -280,11 +319,24 @@ function extractObjectName(obj: Record<string, unknown>): { name?: string; value
   return { value: obj };
 }
 
+const STATUS_FIELD = '_status';
+
+/** Example status config: the NDJSON viewer lets you mark each node. */
+const MULTI_STATUS: NodeStatusConfig = {
+  field: STATUS_FIELD,
+  options: [
+    { value: 'processed', label: 'Processed', color: '#34d058' },
+    { value: 'skipped', label: 'Skipped', color: '#9ca3af' },
+    { value: 'error', label: 'Error', color: '#f85149' },
+  ],
+};
+
 type MultiJsonNode = {
   index: number;
   type: string;
   value: unknown;
   name?: string;
+  status?: string;
   keys?: number;
   items?: number;
   raw: string;
@@ -302,7 +354,9 @@ registerTransform({
     'Name a node with a `// label` or `# label` line above it.',
     'Or add a `_name`, `$name`, or `"//"` field inside an object — the key is hidden from the data.',
     'Names show in each node’s header so you can tell records apart.',
+    'Mark a node from its header (processed / skipped / error) to track progress.',
   ],
+  nodeStatus: MULTI_STATUS,
   fn: (input) => {
     const chunks = splitJsonValues(input);
     const nodes: MultiJsonNode[] = [];
@@ -318,18 +372,32 @@ registerTransform({
             ? 'null'
             : typeof parsed;
 
-        // A comment line wins as the name; otherwise an object may name itself
-        // via a recognized key, which is then stripped from the data tree.
         let value: unknown = parsed;
         let name = label;
-        if (type === 'object' && !name) {
-          const named = extractObjectName(parsed as Record<string, unknown>);
-          name = named.name;
-          value = named.value;
+        let status: string | undefined;
+        if (type === 'object') {
+          let obj = parsed as Record<string, unknown>;
+          // A comment line wins as the name; otherwise an object may name
+          // itself via a recognized key, which is stripped from the tree.
+          if (!name) {
+            const named = extractObjectName(obj);
+            name = named.name;
+            obj = named.value;
+          }
+          // A status marker is always pulled out of the data and surfaced as
+          // node.status (shown as a badge, not a raw field).
+          const rawStatus = obj[STATUS_FIELD];
+          if (typeof rawStatus === 'string' && rawStatus) {
+            status = rawStatus;
+            obj = { ...obj };
+            delete obj[STATUS_FIELD];
+          }
+          value = obj;
         }
 
         const node: MultiJsonNode = { index: idx, type, value, raw };
         if (name) node.name = name;
+        if (status) node.status = status;
         if (type === 'object') node.keys = Object.keys(value as Record<string, unknown>).length;
         if (type === 'array') node.items = (parsed as unknown[]).length;
         nodes.push(node);

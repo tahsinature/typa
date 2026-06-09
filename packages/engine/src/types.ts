@@ -46,6 +46,23 @@ export interface TransformPreset {
   label: string;
 }
 
+/** A selectable status a node can be marked with (see {@link NodeStatusConfig}). */
+export interface NodeStatusOption {
+  value: string;   // written into the node's status field, e.g. "processed"
+  label?: string;  // display label (defaults to `value`)
+  color?: string;  // CSS color for the badge dot (defaults to a neutral token)
+}
+
+/**
+ * Opt a transform into per-node status marking in the multi-JSON viewer. Each
+ * object node gets a picker; choosing a status writes `field: value` back into
+ * the input, and the key is hidden from the data tree and shown as a badge.
+ */
+export interface NodeStatusConfig {
+  field?: string;              // input key to write (default "_status")
+  options: NodeStatusOption[];
+}
+
 // Transforms can return either a plain string (the user-visible text, used for
 // copy/save/StatusBar) or an object with both `text` and `data` — `data` is
 // structured information that rich views (e.g. tables) can consume directly,
@@ -64,6 +81,8 @@ export interface Transform {
   // Optional usage tips surfaced via a help button in the input pane. Each
   // string may contain `code` spans delimited by backticks.
   tips?: string[];
+  // Opt into per-node status marking in the multi-JSON viewer (writes back to input).
+  nodeStatus?: NodeStatusConfig;
   fn: (...inputs: string[]) => TransformResult | Promise<TransformResult>;
   inputViews: string[];
   outputViews: string[];

@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Transform } from "@typa/engine";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface OutputViewConfig<T = any> {
@@ -8,7 +9,15 @@ export interface OutputViewConfig<T = any> {
   // `richData` is supplied by transforms that return { text, data } from `fn`
   // (see TransformResult). Views can prefer it over re-parsing the output text.
   parse: (output: string, richData?: unknown) => T;
-  component: ComponentType<{ data: T; theme: "dark" | "light" }>;
+  component: ComponentType<{
+    data: T;
+    theme: "dark" | "light";
+    // Round-trip props (present only for single-input transforms): let a view
+    // write back into the input — e.g. marking a node stamps a field into it.
+    input?: string;
+    onInputChange?: (value: string) => void;
+    transform?: Transform;
+  }>;
 }
 
 const outputViews = new Map<string, OutputViewConfig>();

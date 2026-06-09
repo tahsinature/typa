@@ -384,7 +384,13 @@ export function DualPane({ tabId }: { tabId: string }) {
         {hasError ? (
           <TransformError message={output.slice(7)} />
         ) : activeOutputView && parsedData !== null ? (
-          <activeOutputView.component data={parsedData} theme={themeMode} />
+          <activeOutputView.component
+            data={parsedData}
+            theme={themeMode}
+            input={inputCount === 1 ? (inputs[0] ?? "") : undefined}
+            onInputChange={inputCount === 1 ? (v) => updateInput(tabId, 0, v) : undefined}
+            transform={transform}
+          />
         ) : (
           <EmptyOutput />
         )}

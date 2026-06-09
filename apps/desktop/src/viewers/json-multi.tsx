@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { JsonViewer } from "@textea/json-viewer";
+import { setNodeField, type NodeStatusOption, type Transform } from "@typa/engine";
 import { registerOutputView } from "./registry";
+import { StatusPicker, StatusSummary, statusOption, STATUS_FILTER_UNMARKED } from "./json-multi-status";
 
 /* -- Types -- */
 
@@ -9,6 +11,7 @@ interface JsonNode {
   type: string;
   value: unknown;
   name?: string;
+  status?: string;
   keys?: number;
   items?: number;
   raw: string;
@@ -57,18 +60,33 @@ function SizeLabel({ node }: { node: JsonNode }) {
 
 /* -- Node Card -- */
 
-function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) {
+function NodeCard({
+  node,
+  theme,
+  options,
+  onSetStatus,
+  cardRef,
+}: {
+  node: JsonNode;
+  theme: "dark" | "light";
+  options?: NodeStatusOption[];
+  onSetStatus?: (index: number, value: string | null) => void;
+  cardRef?: (el: HTMLDivElement | null) => void;
+}) {
   const [collapsed, setCollapsed] = useState(false);
   const isExpandable = node.type === "object" || node.type === "array";
+  const statusColor = statusOption(options ?? [], node.status)?.color;
 
   return (
     <div
+      ref={cardRef}
       className="rounded-lg overflow-hidden shrink-0"
       style={{
         background: "var(--bg-secondary)",
         border: node.type === "error"
           ? "1px solid rgba(248, 81, 73, 0.2)"
           : "1px solid var(--cl-border-subtle)",
+        borderLeft: statusColor ? `3px solid ${statusColor}` : undefined,
       }}
     >
       {/* Header */}
@@ -98,15 +116,22 @@ function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) 
             {node.name}
           </span>
         )}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <TypeBadge type={node.type} />
           <SizeLabel node={node} />
+          {options && onSetStatus && node.type === "object" && (
+            <StatusPicker
+              status={node.status}
+              options={options}
+              onSelect={(value) => onSetStatus(node.index, value)}
+            />
+          )}
         </div>
       </div>
 
       {/* Body */}
       {!collapsed && (
-        <div className="px-3 py-2">
+        <div className="px-3 py-2" style={{ opacity: node.status ? 0.55 : undefined }}>
           {node.type === "error" ? (
             <div className="flex flex-col gap-1">
               <code className="text-[12px] font-mono text-text-secondary break-all">{node.raw}</code>
@@ -139,7 +164,7 @@ function NodeCard({ node, theme }: { node: JsonNode; theme: "dark" | "light" }) 
 
 /* -- Summary Bar -- */
 
-function SummaryBar({ nodes }: { nodes: JsonNode[] }) {
+function SummaryBar({ nodes, extra }: { nodes: JsonNode[]; extra?: ReactNode }) {
   const counts: Record<string, number> = {};
   for (const n of nodes) {
     counts[n.type] = (counts[n.type] || 0) + 1;
@@ -160,14 +185,59 @@ function SummaryBar({ nodes }: { nodes: JsonNode[] }) {
       <span className="font-medium text-text">{nodes.length} node{nodes.length !== 1 ? "s" : ""}</span>
       <span className="text-text-faint">&mdash;</span>
       <span>{parts.join(", ")}</span>
+      {extra && <div className="ml-auto">{extra}</div>}
     </div>
   );
 }
 
 /* -- Main Component -- */
 
-function MultiJsonViewer({ data, theme }: { data: MultiJsonData; theme: "dark" | "light" }) {
-  if (!data?.nodes?.length) {
+function MultiJsonViewer({
+  data,
+  theme,
+  input,
+  onInputChange,
+  transform,
+}: {
+  data: MultiJsonData;
+  theme: "dark" | "light";
+  input?: string;
+  onInputChange?: (value: string) => void;
+  transform?: Transform;
+}) {
+  const statusConfig = transform?.nodeStatus;
+  const options = statusConfig?.options ?? [];
+  const field = statusConfig?.field ?? "_status";
+  // Marking writes back into the input, so it needs both the input and a setter.
+  const canMark = !!(statusConfig && options.length > 0 && typeof input === "string" && onInputChange);
+
+  const [filter, setFilter] = useState<string | null>(null);
+  const [jumpCursor, setJumpCursor] = useState(0);
+  const cardRefs = useRef(new Map<number, HTMLDivElement>());
+
+  const nodes = data?.nodes ?? [];
+
+  const { counts, left } = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let markable = 0;
+    let marked = 0;
+    for (const n of nodes) {
+      if (n.type === "object") markable++;
+      if (n.status) {
+        counts[n.status] = (counts[n.status] ?? 0) + 1;
+        marked++;
+      }
+    }
+    return { counts, left: Math.max(0, markable - marked) };
+  }, [nodes]);
+
+  const displayedNodes = useMemo(() => {
+    if (!canMark || filter === null) return nodes;
+    if (filter === STATUS_FILTER_UNMARKED) return nodes.filter((n) => !n.status);
+    return nodes.filter((n) => n.status === filter);
+  }, [nodes, canMark, filter]);
+
+  if (!nodes.length) {
     return (
       <div className="h-full flex items-center justify-center text-text-faint text-[13px]">
         Paste NDJSON (one JSON value per line)
@@ -175,11 +245,49 @@ function MultiJsonViewer({ data, theme }: { data: MultiJsonData; theme: "dark" |
     );
   }
 
+  const setStatus = (index: number, value: string | null) => {
+    if (typeof input !== "string" || !onInputChange) return;
+    onInputChange(setNodeField(input, index, field, value ?? undefined));
+  };
+
+  const unmarked = displayedNodes.filter((n) => n.type === "object" && !n.status);
+  const jumpNext = () => {
+    if (!unmarked.length) return;
+    const next = unmarked.find((n) => n.index > jumpCursor) ?? unmarked[0];
+    setJumpCursor(next.index);
+    cardRefs.current.get(next.index)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+
   return (
     <div className="h-full overflow-auto p-4 flex flex-col gap-3" style={{ backgroundColor: "var(--bg)" }}>
-      <SummaryBar nodes={data.nodes} />
-      {data.nodes.map((node) => (
-        <NodeCard key={node.index} node={node} theme={theme} />
+      <SummaryBar
+        nodes={nodes}
+        extra={
+          canMark ? (
+            <StatusSummary
+              counts={counts}
+              left={left}
+              options={options}
+              filter={filter}
+              onFilter={setFilter}
+              onJumpNext={jumpNext}
+              jumpDisabled={unmarked.length === 0}
+            />
+          ) : undefined
+        }
+      />
+      {displayedNodes.map((node) => (
+        <NodeCard
+          key={node.index}
+          node={node}
+          theme={theme}
+          options={canMark ? options : undefined}
+          onSetStatus={canMark ? setStatus : undefined}
+          cardRef={(el) => {
+            if (el) cardRefs.current.set(node.index, el);
+            else cardRefs.current.delete(node.index);
+          }}
+        />
       ))}
     </div>
   );
