@@ -63,6 +63,16 @@ export interface NodeStatusConfig {
   options: NodeStatusOption[];
 }
 
+/**
+ * Opt a transform into renaming nodes from the multi-JSON viewer. Each object
+ * node's header name becomes editable; the typed name is written to `field` in
+ * the input (and the key is hidden from the data tree). Nodes named via a
+ * comment line are shown but not editable inline, since the comment wins.
+ */
+export interface NodeNameConfig {
+  field?: string;              // input key to write (default "_name")
+}
+
 // Transforms can return either a plain string (the user-visible text, used for
 // copy/save/StatusBar) or an object with both `text` and `data` — `data` is
 // structured information that rich views (e.g. tables) can consume directly,
@@ -83,6 +93,8 @@ export interface Transform {
   tips?: string[];
   // Opt into per-node status marking in the multi-JSON viewer (writes back to input).
   nodeStatus?: NodeStatusConfig;
+  // Opt into per-node renaming in the multi-JSON viewer (writes back to input).
+  nodeName?: NodeNameConfig;
   fn: (...inputs: string[]) => TransformResult | Promise<TransformResult>;
   inputViews: string[];
   outputViews: string[];

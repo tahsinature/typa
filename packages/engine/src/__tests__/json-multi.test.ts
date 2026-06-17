@@ -6,6 +6,7 @@ interface MultiNode {
   index: number;
   type: string;
   name?: string;
+  nameSource?: 'comment' | 'field';
   status?: string;
   value: unknown;
   keys?: number;
@@ -93,6 +94,49 @@ describe('json-multi-view: naming via object field', () => {
     const nodes = run('{"_name":123,"a":1}');
     expect(nodes[0].name).toBeUndefined();
     expect(nodes[0].value).toEqual({ _name: 123, a: 1 });
+  });
+});
+
+describe('json-multi-view: nameSource', () => {
+  it('reports a comment-line name as nameSource "comment"', () => {
+    const nodes = run('// Cart\n{"a":1}');
+    expect(nodes[0].name).toBe('Cart');
+    expect(nodes[0].nameSource).toBe('comment');
+  });
+
+  it('reports an in-object name as nameSource "field"', () => {
+    const nodes = run('{"_name":"Cart","a":1}');
+    expect(nodes[0].name).toBe('Cart');
+    expect(nodes[0].nameSource).toBe('field');
+  });
+
+  it('leaves nameSource undefined for an unnamed node', () => {
+    const nodes = run('{"a":1}');
+    expect(nodes[0].name).toBeUndefined();
+    expect(nodes[0].nameSource).toBeUndefined();
+  });
+
+  it('reports a comment name on a non-object as "comment"', () => {
+    const nodes = run('// just a number\n42');
+    expect(nodes[0].name).toBe('just a number');
+    expect(nodes[0].nameSource).toBe('comment');
+  });
+});
+
+describe('json-multi-view: renaming round-trip', () => {
+  it('writes _name into the chosen node and parses back as a field name', () => {
+    const renamed = setNodeField('{"a":1}\n{"b":2}', 1, '_name', 'Cart');
+    expect(renamed).toBe('{"a":1,"_name":"Cart"}\n{"b":2}');
+    const nodes = run(renamed);
+    expect(nodes[0].name).toBe('Cart');
+    expect(nodes[0].nameSource).toBe('field');
+    expect(nodes[0].value).toEqual({ a: 1 });
+  });
+
+  it('clears a field name when renamed to empty (value undefined)', () => {
+    const cleared = setNodeField('{"_name":"Cart","a":1}', 1, '_name', undefined);
+    expect(cleared).toBe('{"a":1}');
+    expect(run(cleared)[0].name).toBeUndefined();
   });
 });
 

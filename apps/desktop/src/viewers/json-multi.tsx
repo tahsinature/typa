@@ -4,6 +4,7 @@ import { JsonViewer } from "@textea/json-viewer";
 import { setNodeField, type NodeStatusOption, type Transform } from "@typa/engine";
 import { registerOutputView } from "./registry";
 import { StatusPicker, StatusSummary, statusOption, STATUS_FILTER_UNMARKED } from "./json-multi-status";
+import { NameEditor } from "./json-multi-name";
 
 /* -- Types -- */
 
@@ -12,6 +13,7 @@ interface JsonNode {
   type: string;
   value: unknown;
   name?: string;
+  nameSource?: "comment" | "field";
   status?: string;
   keys?: number;
   items?: number;
@@ -68,6 +70,7 @@ const NodeCard = memo(function NodeCard({
   collapsed,
   onToggle,
   onSetStatus,
+  onRename,
 }: {
   node: JsonNode;
   theme: "dark" | "light";
@@ -75,9 +78,12 @@ const NodeCard = memo(function NodeCard({
   collapsed: boolean;
   onToggle: (index: number, collapsed: boolean) => void;
   onSetStatus?: (index: number, value: string | null) => void;
+  onRename?: (index: number, value: string) => void;
 }) {
   const isExpandable = node.type === "object" || node.type === "array";
   const statusColor = statusOption(options ?? [], node.status)?.color;
+  // Only object nodes can carry a name field to write back into the input.
+  const nameEditable = !!onRename && node.type === "object";
 
   return (
     <div
@@ -94,7 +100,7 @@ const NodeCard = memo(function NodeCard({
     >
       {/* Header */}
       <div
-        className="w-full px-3 py-2 flex items-center gap-2 min-w-0"
+        className="group w-full px-3 py-2 flex items-center gap-2 min-w-0"
         style={{
           cursor: isExpandable ? "pointer" : "default",
           borderBottom: collapsed ? "none" : "1px solid var(--cl-border-subtle)",
@@ -114,11 +120,12 @@ const NodeCard = memo(function NodeCard({
           </svg>
         )}
         <span className="text-[11px] text-text-faint font-mono shrink-0">#{node.index}</span>
-        {node.name && (
-          <span className="text-[13px] font-medium text-text truncate min-w-0" title={node.name}>
-            {node.name}
-          </span>
-        )}
+        <NameEditor
+          name={node.name}
+          nameSource={node.nameSource}
+          editable={nameEditable}
+          onRename={(value) => onRename?.(node.index, value)}
+        />
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <TypeBadge type={node.type} />
           <SizeLabel node={node} />
@@ -213,8 +220,11 @@ function MultiJsonViewer({
   const statusConfig = transform?.nodeStatus;
   const options = statusConfig?.options ?? [];
   const field = statusConfig?.field ?? "_status";
-  // Marking writes back into the input, so it needs both the input and a setter.
+  // Marking and renaming both write back into the input, so they need both the
+  // input and a setter (only available when the pane has a single input).
   const canMark = !!(statusConfig && options.length > 0 && typeof input === "string" && onInputChange);
+  const nameField = transform?.nodeName?.field ?? "_name";
+  const canRename = !!(transform?.nodeName && typeof input === "string" && onInputChange);
 
   const [filter, setFilter] = useState<string | null>(null);
   const [collapsedOverride, setCollapsedOverride] = useState<Map<number, boolean>>(() => new Map());
@@ -259,6 +269,15 @@ function MultiJsonViewer({
       onInputChange(setNodeField(input, index, field, value ?? undefined));
     },
     [input, onInputChange, field],
+  );
+
+  const setName = useCallback(
+    (index: number, value: string) => {
+      if (typeof input !== "string" || !onInputChange) return;
+      // An empty name clears the field rather than writing an empty string.
+      onInputChange(setNodeField(input, index, nameField, value.trim() || undefined));
+    },
+    [input, onInputChange, nameField],
   );
 
   const toggleCollapsed = useCallback((index: number, currentlyCollapsed: boolean) => {
@@ -331,6 +350,7 @@ function MultiJsonViewer({
                   collapsed={collapsed}
                   onToggle={toggleCollapsed}
                   onSetStatus={canMark ? setStatus : undefined}
+                  onRename={canRename ? setName : undefined}
                 />
               </div>
             );

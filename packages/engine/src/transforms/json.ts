@@ -1,5 +1,5 @@
 import { registerTransform } from './registry';
-import type { NodeStatusConfig } from '../types';
+import type { NodeNameConfig, NodeStatusConfig } from '../types';
 
 const jsonOutputViews = ['raw-output', 'json-tree', 'json-diagram', 'table'];
 
@@ -316,6 +316,9 @@ export function setNodeField(
 /** Object keys recognized as a node's name, in priority order. */
 const NAME_KEYS = ['_name', '$name', '//'];
 
+/** The key the viewer writes when you rename a node (the top-priority key). */
+const NAME_FIELD = NAME_KEYS[0];
+
 /**
  * If an object has a recognized name key with a non-empty string value, return
  * that name plus a copy of the object with the key removed (so the meta key
@@ -350,6 +353,10 @@ type MultiJsonNode = {
   type: string;
   value: unknown;
   name?: string;
+  // Where `name` came from: a comment line above the value, or an in-object
+  // key. The viewer only allows inline renaming of 'field'-sourced names,
+  // since a comment line always wins.
+  nameSource?: 'comment' | 'field';
   status?: string;
   keys?: number;
   items?: number;
@@ -365,12 +372,14 @@ registerTransform({
   inputViews: ['raw-input'],
   outputViews: ['json-multi', 'json-diagram', 'raw-output'],
   tips: [
+    'Click a node’s name (or “+ Name”) in its header to rename it inline.',
     'Name a node with a `// label` or `# label` line above it.',
     'Or add a `_name`, `$name`, or `"//"` field inside an object — the key is hidden from the data.',
     'Names show in each node’s header so you can tell records apart.',
     'Mark a node from its header (processed / skipped / error) to track progress.',
   ],
   nodeStatus: MULTI_STATUS,
+  nodeName: { field: NAME_FIELD },
   fn: (input) => {
     const chunks = splitJsonValues(input);
     const nodes: MultiJsonNode[] = [];
@@ -388,6 +397,7 @@ registerTransform({
 
         let value: unknown = parsed;
         let name = label;
+        let nameSource: 'comment' | 'field' | undefined = label ? 'comment' : undefined;
         let status: string | undefined;
         if (type === 'object') {
           let obj = parsed as Record<string, unknown>;
@@ -395,7 +405,10 @@ registerTransform({
           // itself via a recognized key, which is stripped from the tree.
           if (!name) {
             const named = extractObjectName(obj);
-            name = named.name;
+            if (named.name) {
+              name = named.name;
+              nameSource = 'field';
+            }
             obj = named.value;
           }
           // A status marker is always pulled out of the data and surfaced as
@@ -410,7 +423,10 @@ registerTransform({
         }
 
         const node: MultiJsonNode = { index: idx, type, value, raw };
-        if (name) node.name = name;
+        if (name) {
+          node.name = name;
+          node.nameSource = nameSource;
+        }
         if (status) node.status = status;
         if (type === 'object') node.keys = Object.keys(value as Record<string, unknown>).length;
         if (type === 'array') node.items = (parsed as unknown[]).length;
