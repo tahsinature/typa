@@ -10,6 +10,7 @@ import './image-diff';
 import './mermaid';
 import './code-image';
 import './text-stats';
+import './text-finder';
 import './image-canvas';
 import './image-inspector';
 import './port-manager';
