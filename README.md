@@ -91,6 +91,10 @@ The engine is a **standalone package** (`@typa/engine`) with no DOM dependencies
 
 ## Getting Started
 
+For macOS installation, Homebrew setup, and automatic updates, see
+[Releases and Homebrew](docs/releases.md). Homebrew becomes available after the
+first release and cask workflow complete.
+
 ```bash
 # Install dependencies
 bun install

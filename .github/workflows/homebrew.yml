@@ -1,0 +1,52 @@
+name: Update Homebrew cask
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag (vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: homebrew-cask
+  cancel-in-progress: false
+
+jobs:
+  cask:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Download published release
+        run: |
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq 'if .isDraft or .isPrerelease then error("Expected a published stable release") else true end'
+          test "$(gh release view --json tagName --jq .tagName)" = "$RELEASE_TAG" || { echo 'Only the latest release can update the cask'; exit 1; }
+          gh release download "$RELEASE_TAG" --pattern '*.dmg' --dir release-assets
+      - name: Generate cask with release checksums
+        run: bun scripts/generate-cask.mjs "${RELEASE_TAG#v}" release-assets Casks/typa.rb
+      - name: Check cask syntax
+        run: ruby -c Casks/typa.rb
+      - name: Commit cask to default branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Casks/typa.rb
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Homebrew cask for $RELEASE_TAG"
+            git pull --rebase origin "${{ github.event.repository.default_branch }}"
+            git push origin "HEAD:${{ github.event.repository.default_branch }}"
+          fi

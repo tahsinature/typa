@@ -23,3 +23,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local release configuration and updater signing keys
+apps/desktop/src-tauri/tauri.release.conf.json
+*.key
+*.key.pub

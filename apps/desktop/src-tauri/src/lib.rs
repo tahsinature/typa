@@ -8,6 +8,8 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
+mod updater;
+
 /* ── Existing commands ── */
 
 #[tauri::command]
@@ -411,6 +413,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // Explicit app menu: re-adds the standard items (so Quit / copy /
             // paste stay intact) plus File → New Window. We intentionally do NOT
@@ -420,8 +423,12 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+N")
                 .build(app)?;
 
+            let check_updates = MenuItemBuilder::new("Check for Updates…")
+                .id("check_updates")
+                .build(app)?;
             let app_menu = SubmenuBuilder::new(app, "Typa")
                 .about(None)
+                .item(&check_updates)
                 .separator()
                 .services()
                 .separator()
@@ -454,8 +461,14 @@ pub fn run() {
             app.on_menu_event(move |app, event| {
                 if event.id() == new_window.id() {
                     open_new_window(app);
+                } else if event.id() == check_updates.id() {
+                    updater::check(app.clone(), true);
                 }
             });
+
+            if !cfg!(debug_assertions) {
+                updater::check(app.handle().clone(), false);
+            }
 
             Ok(())
         })
