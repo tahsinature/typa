@@ -5,6 +5,7 @@ import './hashing';
 import './formatting';
 import './web';
 import './numbers';
+import './ratio';
 import './diff';
 import './image-diff';
 import './mermaid';

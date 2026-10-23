@@ -13,6 +13,7 @@ import "./image-highlight";
 import "./image-details";
 import "./mermaid";
 import "./counter";
+import "./ratio-workspace";
 import "./text-finder";
 import "./code-image";
 import "./port-viewer";
