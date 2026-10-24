@@ -65,6 +65,8 @@ jobs:
           # Tauri treats an empty certificate variable as a supplied certificate.
           # Export only configured credentials to the build step.
           with open(os.environ['GITHUB_ENV'], 'a') as output:
+              if not os.environ.get('APPLE_SIGNING_IDENTITY'):
+                  output.write('APPLE_SIGNING_IDENTITY=-\n')
               for name, value in os.environ.items():
                   if name.startswith('APPLE_') and value:
                       delimiter = uuid.uuid4().hex
@@ -85,3 +87,7 @@ jobs:
           prerelease: false
           generateReleaseNotes: true
           uploadUpdaterJson: true
+      - name: Verify macOS bundle signatures
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: python3 scripts/verify-macos-bundles.py "apps/desktop/src-tauri/target/$BUILD_TARGET/release/bundle"

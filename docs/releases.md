@@ -38,7 +38,9 @@ the public key and enables updater artifacts using a generated configuration fil
    `APPLE_PASSWORD` (app-specific password), and `APPLE_TEAM_ID`.
    See [Tauri’s signing guide](https://v2.tauri.app/distribute/sign/macos/).
    Updater signing is separate from Apple signing. Without Apple credentials,
-   distribution may trigger Gatekeeper warnings or blocks.
+   the workflow uses free ad-hoc signing to seal the app bundle. macOS still
+   requires a user exception under System Settings → Privacy & Security → Open Anyway.
+   Ad-hoc signing does not provide Apple notarization or verified publisher identity.
 
 4. Allow GitHub Actions to write repository contents. The Homebrew workflow commits
    `Casks/typa.rb` to the default branch when a stable release is published. If branch
@@ -56,7 +58,9 @@ No release is published and no remote secrets are configured by these source cha
 2. Create and push its tag, for example `v0.1.0`. The **Build macOS release** workflow
    builds Apple Silicon and Intel sequentially and creates a **draft** GitHub release.
    A manual workflow run can retry an existing tag; the selected tag's source is built.
-3. Wait for both builds to succeed. Check that the draft contains two DMGs, signed
+3. Wait for both builds and bundle signature checks to succeed. The workflow verifies
+   the built app, the extracted updater archive, and the app mounted from the DMG.
+   Check that the draft contains two DMGs, signed
    app archives, signature files, and `latest.json` with both `darwin-aarch64` and
    `darwin-x86_64` entries. Test each architecture before publishing.
 4. Publish the draft in GitHub. Installed official builds now discover the update.
