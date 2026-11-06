@@ -23,6 +23,7 @@ import "./port-table";
 import "./image-canvas-excalidraw";
 // import "./image-canvas-tldraw";
 import "./image-inspector";
+import "./present";
 
 export { getOutputViewsForTransform, registerOutputView } from "./registry";
 export type { OutputViewConfig } from "./registry";

@@ -17,6 +17,7 @@ import './image-inspector';
 import './port-manager';
 import './markdown-table';
 import './phone';
+import './present';
 
 // Re-export registry
 export {

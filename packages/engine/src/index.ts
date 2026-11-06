@@ -4,6 +4,7 @@ export type { RatioWorkspace, RatioMode, RatioPart, RatioWorkspaceResult } from 
 export type { LineResult, EvaluationResult, Transform, TransformPreset, TransformResult, TransformCategory, CategoryMeta, NodeStatusConfig, NodeStatusOption, NodeNameConfig } from './types';
 export { TRANSFORM_CATEGORIES, CATEGORY_META } from './types';
 export { setNodeField } from './transforms/json';
+export type { SpelledChar, SpelledCharKind } from './transforms/present';
 export {
   registerTransform,
   getTransform,
