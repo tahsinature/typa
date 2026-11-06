@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/desktop/src-tauri/icons/128x128.png" width="128" height="128" alt="Typa">
+  <img src="apps/desktop/src-tauri/icons/icon.png" width="128" height="128" alt="Typa">
 </p>
 
 <h1 align="center">Typa</h1>
