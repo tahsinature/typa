@@ -172,12 +172,12 @@ describe('Percentage operations', () => {
 
   it('handles "X as a % of Y"', () => {
     const results = engine.evaluateDocument('50 as a % of 100');
-    expect(results[0].result).toBe('50');
+    expect(results[0].result).toBe('50%');
   });
 
   it('handles "X as a % on Y"', () => {
     const results = engine.evaluateDocument('70 as a % on 20');
-    expect(results[0].result).toBe('250');
+    expect(results[0].result).toBe('250%');
   });
 
   it('handles "N% of what is X"', () => {
@@ -292,7 +292,7 @@ describe('Area and volume prefixes', () => {
 
   it('handles "cubic cm"', () => {
     const results = engine.evaluateDocument('1000 cubic cm to liter');
-    expect(results[0].result).toContain('liter');
+    expect(results[0].result).toBe('1 L');
   });
 });
 
@@ -322,5 +322,75 @@ describe('Sum and average aliases', () => {
   it('handles "average"', () => {
     const results = engine.evaluateDocument('10\n20\n30\naverage');
     expect(results[3].result).toBe('20');
+  });
+});
+
+describe('Numi-style calculator', () => {
+  const engine = new TypaEngine();
+  const result = (line: string) => engine.evaluateDocument(line)[0].result;
+
+  it.each([
+    ['60 km/h to mph', '37.2822715342 mph'],
+    ['100 km / 2 h', '50 km/h'],
+    ['5 kcal to kJ', '20.92 kJ'],
+    ['98.6 F to C', '37 °C'],
+    ['20 °C + 5', '25 °C'],
+    ['255 to hex', '0xFF'],
+    ['0b1010 + 1', '11'],
+    ['1,234,567 * 2', '2,469,134'],
+    ['5!', '120'],
+    ['17 % 5', '2'],
+    ['5 ft 3 in to cm', '160.02 cm'],
+    ['3 days + 4 hours', '76 h'],
+    ['12 V * 2 A', '24 W'],
+    ['2 kW * 3 h', '6 kWh'],
+    ['1 kg * 9.8 m/s^2', '9.8 N'],
+    ['$5 per kg * 3 kg', '15.00 USD'],
+    ['10 m2 to sqft', '107.639104167 ft²'],
+    ['1 GB to MB', '1,000 MB'],
+    ['24 Kb to B', '3,000 B'],
+    ['sqrt(16 m^2)', '4 m'],
+    ['round(3.14159, 2)', '3.14'],
+    ['Rent 1200', '1,200'],
+  ])('%s → %s', (input, expected) => {
+    expect(result(input)).toBe(expected);
+  });
+
+  it('reports incompatible units as an error', () => {
+    const [line] = engine.evaluateDocument('5 km + 3 kg');
+    expect(line.result).toBeNull();
+    expect(line.error).toMatch(/length.*mass/);
+  });
+
+  it('treats "in" as inches only at the end or before a conversion', () => {
+    const results = engine.evaluateDocument('5 in\n5 in to cm\n5 km in m');
+    expect(results.map((r) => r.result)).toEqual(['5 inch', '12.7 cm', '5,000 m']);
+  });
+
+  it('sums only the block above, up to a blank line or heading', () => {
+    const results = engine.evaluateDocument('100\n\n# Food\n10\n20\nsum');
+    expect(results[5].result).toBe('30');
+  });
+
+  it('lets a variable named "total" override the aggregate', () => {
+    const results = engine.evaluateDocument('total = 7\n1\ntotal * 2');
+    expect(results[2].result).toBe('14');
+  });
+
+  it('prefers a variable over a unit with the same name', () => {
+    const results = engine.evaluateDocument('rate = 5\nhours = 3\nrate hours');
+    expect(results[2].result).toBe('15');
+  });
+
+  it('adds and subtracts dates', () => {
+    const fixed = new Date(2024, 0, 10, 15, 30).getTime();
+    const dated = new TypaEngine({ now: () => fixed });
+    const results = dated.evaluateDocument('today + 3 days\ntomorrow - yesterday\nnow');
+    expect(results.map((r) => r.result)).toEqual(['2024-01-13', '2 d', '2024-01-10, 3:30 PM']);
+  });
+
+  it('summarizes selected lines', () => {
+    engine.evaluateDocument('$10\n$20\nhello\n$30');
+    expect(engine.summarize([1, 2, 3, 4])).toEqual({ sum: '60.00 USD', average: '20.00 USD', count: 3 });
   });
 });

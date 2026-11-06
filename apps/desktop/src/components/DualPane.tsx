@@ -3,6 +3,7 @@ import { Allotment } from "allotment";
 import { getTransform, CATEGORY_META } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useEngineStore } from "@/stores/engineStore";
+import { CalculatorSheet } from "@/components/calculator/CalculatorSheet";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FullscreenIcon, ExitFullscreenIcon, InfoIcon } from "@/components/Icons";
 import { IconButton } from "@/components/ui/icon-button";
@@ -303,6 +304,10 @@ export function DualPane({ tabId }: { tabId: string }) {
   const themeMode: "dark" | "light" = resolvedTheme === "dark" ? "dark" : "light";
   const hasInputPane = availableInputViews.length > 0;
   const hasError = output.startsWith("Error: ");
+
+  if (selectedTransformId === "calculator") {
+    return <CalculatorSheet input={inputs[0] ?? ""} onInputChange={(v) => updateInput(tabId, 0, v)} theme={themeMode} />;
+  }
 
   /* -- Render input pane content -- */
   const renderInputPane = () => {

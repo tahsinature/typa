@@ -28,3 +28,4 @@ Thumbs.db
 apps/desktop/src-tauri/tauri.release.conf.json
 *.key
 *.key.pub
+.playground/

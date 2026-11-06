@@ -1,23 +1,26 @@
-import { create, all } from 'mathjs';
-import { Scope } from './scope';
-import { preprocessLine } from './preprocessor';
-import { formatResult, extractNumeric } from './postprocessor';
-import { registerCurrencies } from './currency';
+import { Calculator, type LineOutcome } from './calc/document';
+import { formatValue } from './calc/format';
+import { calculatorVocabulary, completionItems, type CalculatorVocabulary, type CompletionItem } from './calc/completions';
+import { divide, num, type Value } from './calc/values';
 import type { LineResult } from './types';
 
-export class TypaEngine {
-  private scope = new Scope();
-  private math = create(all);
-  private rates: Record<string, number> | null = null;
+export interface SelectionSummary {
+  sum: string | null;
+  average: string | null;
+  count: number;
+}
 
-  constructor() {
-    this.setupCustomUnits();
+export class TypaEngine {
+  private calculator: Calculator;
+  private lastOutcomes: LineOutcome[] = [];
+
+  constructor(options: { now?: () => number } = {}) {
+    this.calculator = new Calculator(options);
   }
 
   evaluateDocument(text: string): LineResult[] {
-    this.scope.reset();
-    const lines = text.split('\n');
-    return lines.map((raw, i) => this.evaluateLine(raw, i + 1));
+    this.lastOutcomes = this.calculator.evaluate(text);
+    return this.lastOutcomes.map(({ line, input, result, error }) => ({ line, input, result, error }));
   }
 
   /**
@@ -25,36 +28,26 @@ export class TypaEngine {
    * @param rates — { EUR: 0.92, GBP: 0.79, … } where 1 USD = rates[X]
    */
   setCurrencyRates(rates: Record<string, number>): void {
-    this.rates = rates;
-    this.math = create(all);
-    this.setupCustomUnits();
-    registerCurrencies(this.math, rates);
+    this.calculator.currencies.setRates(rates);
   }
 
-  private setupCustomUnits(): void {
-    // CSS units (default: 96 ppi, 1 em = 16 px)
-    try { this.math.createUnit('px', `${1 / 96} inch`); } catch {}
-    try { this.math.createUnit('pt', `${1 / 72} inch`, { override: true }); } catch {}
-    try { this.math.createUnit('em', `${16 / 96} inch`); } catch {}
+  /** Sum, average and count of the results on the given 1-based lines of the last evaluated document. */
+  summarize(lines: number[]): SelectionSummary {
+    const values = lines
+      .map((n) => this.lastOutcomes[n - 1]?.value)
+      .filter((v): v is Value => v != null);
+    const { sum, count } = Calculator.sum(values);
+    if (!sum) return { sum: null, average: null, count: 0 };
+    return { sum: formatValue(sum), average: formatValue(divide(sum, num(count))), count };
   }
 
-  private evaluateLine(raw: string, lineNum: number): LineResult {
-    const expr = preprocessLine(raw, this.scope);
+  /** Units, currencies, functions, keywords and the variables of the last evaluated document. */
+  getCompletions(): CompletionItem[] {
+    return completionItems(this.calculator.currencies.codes(), this.calculator.variableNames());
+  }
 
-    if (expr === null) {
-      this.scope.addLineResult(null);
-      return { line: lineNum, input: raw, result: null, error: null };
-    }
-
-    try {
-      const value = this.math.evaluate(expr, this.scope.getMathScope());
-      const result = formatResult(value);
-      this.scope.addLineResult(extractNumeric(value));
-      return { line: lineNum, input: raw, result, error: null };
-    } catch (e: unknown) {
-      this.scope.addLineResult(null);
-      const message = e instanceof Error ? e.message : String(e);
-      return { line: lineNum, input: raw, result: null, error: message };
-    }
+  /** Word lists for syntax highlighting. */
+  getVocabulary(): CalculatorVocabulary {
+    return calculatorVocabulary(this.calculator.currencies.codes());
   }
 }

@@ -36,6 +36,11 @@ export function defineMonacoThemes(monaco: Monaco) {
       { token: "regexp", foreground: "f5c2e7" },
       { token: "annotation", foreground: "f5c2e7" },
       { token: "identifier", foreground: "cdd6f4" },
+      { token: "calc.unit", foreground: "94e2d5" },
+      { token: "calc.currency", foreground: "f9e2af" },
+      { token: "calc.variable", foreground: "f5c2e7" },
+      { token: "calc.label", foreground: "7f849c" },
+      { token: "calc.heading", foreground: "b4befe", fontStyle: "bold" },
     ],
     colors: {
       "editor.background": "#1e1e2e",
@@ -103,6 +108,11 @@ export function defineMonacoThemes(monaco: Monaco) {
       { token: "regexp", foreground: "ea76cb" },
       { token: "annotation", foreground: "ea76cb" },
       { token: "identifier", foreground: "4c4f69" },
+      { token: "calc.unit", foreground: "179299" },
+      { token: "calc.currency", foreground: "df8e1d" },
+      { token: "calc.variable", foreground: "ea76cb" },
+      { token: "calc.label", foreground: "8c8fa1" },
+      { token: "calc.heading", foreground: "7287fd", fontStyle: "bold" },
     ],
     colors: {
       "editor.background": "#eff1f5",
