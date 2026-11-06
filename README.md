@@ -26,8 +26,9 @@
 ## Install
 
 ```sh
-brew tap tahsinature/typa https://github.com/tahsinature/typa.git
-brew install --cask tahsinature/typa/typa
+brew tap tahsinature/tap
+brew trust tahsinature/tap
+brew install --cask typa
 ```
 
 Or download the `.dmg` from the [latest release](https://github.com/tahsinature/typa/releases/latest). Typa updates itself from inside the app.
@@ -44,7 +45,7 @@ The calculator and transforms live in `packages/engine`, a standalone package wi
 
 ## Docs
 
-[Releases and Homebrew](docs/releases.md)
+[Releasing](docs/releases.md)
 
 ## License
 

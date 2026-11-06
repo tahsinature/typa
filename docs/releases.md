@@ -1,109 +1,103 @@
-# macOS releases and Homebrew
+# Releasing Typa
 
-Typa checks for updates once when a release build starts. Users can also choose
-**Typa → Check for Updates…**. Checks run in the background; automatic check
-failures do not interrupt work. Downloads require confirmation, signatures are
-verified by Tauri, and installation requires a second confirmation to restart.
-Save work in every window before installing: open tabs are not persisted.
-Choosing Later discards a downloaded update; the next check can download it again.
+Releases are automatic. Every push to `master` builds Typa, publishes a GitHub release, ships an in-app update and updates the Homebrew cask. There is nothing to run by hand.
 
-Local builds without an updater public key skip startup checks. Normal `make dmg`
-builds continue to work without release credentials. The release workflow injects
-the public key and enables updater artifacts using a generated configuration file.
+## Quick version
+
+1. Write commit messages with a type prefix (see below).
+2. Push to `master`.
+3. Watch the **Release** workflow in the Actions tab. When it is green, installed copies of Typa offer the update and Homebrew users can upgrade.
+
+## How the version is chosen
+
+`scripts/next-version.sh` reads the commit messages since the last `v*` tag and picks the bump:
+
+| Commit message | Bump | Example |
+| --- | --- | --- |
+| `feat!: ...` (any type with `!`) or a body line starting with `BREAKING CHANGE:` | major | 1.4.2 → 2.0.0 |
+| `feat: ...` or `feat(scope): ...` | minor | 1.4.2 → 1.5.0 |
+| anything else (`fix:`, `chore:`, no prefix, ...) | patch | 1.4.2 → 1.4.3 |
+
+The biggest bump wins. One `feat:` among ten `fix:` commits makes a minor release.
+
+Preview the next version locally:
+
+```sh
+scripts/next-version.sh          # what a push would release
+scripts/next-version.sh minor    # force a bump type
+```
+
+It prints nothing when there are no commits since the last tag.
+
+## What the workflow does
+
+`.github/workflows/release.yml` runs these jobs in order:
+
+1. **version** picks the next version. With no new commits, every later job is skipped.
+2. **test** runs the engine tests and the release script tests. A failure stops the release.
+3. **draft** creates a draft GitHub release `vX.Y.Z` whose notes list the commit subjects since the previous release.
+4. **build** stamps the version into `package.json`, `Cargo.toml` and `tauri.conf.json` (not committed), builds a universal (Apple Silicon and Intel) app and DMG, signs the updater archive, uploads everything with `latest.json`, and checks the macOS signatures.
+5. **publish** publishes the draft. This creates the tag, and installed copies of Typa now see the update.
+6. **homebrew** copies `packaging/typa.rb` into the tap with the new `version` and `sha256`.
+
+Releases run one at a time in push order, so two quick pushes never claim the same version. If any job fails, the release stays a draft and nothing reaches users.
+
+### Adding Windows or Linux
+
+The **build** job is a matrix with one `macos` row. To ship another platform, add a row with its runner and Tauri `args` (for example `--bundles nsis` on `windows-latest`, or `--bundles appimage,deb` on `ubuntu-22.04` plus the Tauri Linux packages). Builds run one at a time, so each merges its platforms into the same `latest.json`. Steps that only apply to macOS check `matrix.platform == 'macos'`.
+
+## Releasing on demand
+
+To release without a new commit, or to force a bump type, open **Actions → Release → Run workflow** and choose `auto`, `patch`, `minor` or `major`. With `auto` and no new commits, the run does nothing.
+
+## Homebrew
+
+Users install with:
+
+```sh
+brew tap tahsinature/tap
+brew trust tahsinature/tap    # Homebrew 7+ refuses casks from taps you have not trusted
+brew install --cask typa
+```
+
+The cask lives in [tahsinature/homebrew-tap](https://github.com/tahsinature/homebrew-tap) at `Casks/typa.rb`. Its source of truth is `packaging/typa.rb` in this repository. Edit that file, not the tap, because the workflow overwrites the tap copy on every release.
+
+The workflow pushes to the tap with the `HOMEBREW_TAP_TOKEN` repository secret: a fine-grained personal access token limited to the `homebrew-tap` repository with **Contents: Read and write**. If the secret is missing, the release still happens and the workflow logs a warning instead of updating the cask.
+
+```sh
+gh secret set HOMEBREW_TAP_TOKEN -R tahsinature/typa    # paste the token
+```
 
 ## One-time setup
 
-1. Generate the updater signing key outside the repository:
+### Updater signing key
 
-   ```sh
-   mkdir -p "$HOME/.config/typa"
-   cd apps/desktop
-   bunx tauri signer generate -w "$HOME/.config/typa/updater.key"
-   ```
-
-   Keep the private key and its password backed up securely. Existing installations
-   trust this key; losing it prevents signing updates for those installations.
-
-2. In `tahsinature/typa` GitHub Settings → Secrets and variables → Actions, set:
-
-   | Type | Name | Value |
-   | --- | --- | --- |
-   | Variable | `TAURI_UPDATER_PUBLIC_KEY` | Contents of `updater.key.pub` |
-   | Secret | `TAURI_SIGNING_PRIVATE_KEY` | Contents of `updater.key` |
-   | Secret | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Key password; omit if empty |
-
-3. For Apple Developer ID signing and notarization, add the following secrets:
-   `APPLE_CERTIFICATE` (base64-encoded Developer ID Application certificate `.p12`),
-   `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
-   `APPLE_PASSWORD` (app-specific password), and `APPLE_TEAM_ID`.
-   See [Tauri’s signing guide](https://v2.tauri.app/distribute/sign/macos/).
-   Updater signing is separate from Apple signing. Without Apple credentials,
-   the workflow uses free ad-hoc signing to seal the app bundle. macOS still
-   requires a user exception under System Settings → Privacy & Security → Open Anyway.
-   Ad-hoc signing does not provide Apple notarization or verified publisher identity.
-
-4. Allow GitHub Actions to write repository contents. The Homebrew workflow commits
-   `Casks/typa.rb` to the default branch when a stable release is published. If branch
-   protection prevents bot commits, maintain the generated cask through a pull request
-   instead; the workflow will report a push failure.
-
-No release is published and no remote secrets are configured by these source changes.
-
-## Publish a version
-
-1. Set the same stable version in `apps/desktop/package.json`,
-   `apps/desktop/src-tauri/Cargo.toml`, and `apps/desktop/src-tauri/tauri.conf.json`.
-   Run `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` to update the
-   lockfile, then commit the changes.
-2. Create and push its tag, for example `v0.1.0`. The **Build macOS release** workflow
-   builds Apple Silicon and Intel sequentially and creates a **draft** GitHub release.
-   A manual workflow run can retry an existing tag; the selected tag's source is built.
-3. Wait for both builds and bundle signature checks to succeed. The workflow verifies
-   the built app, the extracted updater archive, and the app mounted from the DMG.
-   Check that the draft contains two DMGs, signed
-   app archives, signature files, and `latest.json` with both `darwin-aarch64` and
-   `darwin-x86_64` entries. Test each architecture before publishing.
-4. Publish the draft in GitHub. Installed official builds now discover the update.
-   **Update Homebrew cask** downloads both DMGs, hashes their contents, generates
-   `Casks/typa.rb`, and commits it to the default branch. It refuses draft, prerelease,
-   and older releases. You can retry it manually with the published tag.
-
-Do not replace assets of a published version. Fixes should use a new version and tag.
-The first updater-enabled version must be installed manually or through Homebrew;
-older local DMG installations have no update checker.
-
-## Install with Homebrew
-
-After the first release is published and the cask workflow succeeds:
+In-app updates are signed with a Tauri updater key. Generate it outside the repository:
 
 ```sh
-brew tap tahsinature/typa https://github.com/tahsinature/typa.git
-brew install --cask tahsinature/typa/typa
+mkdir -p "$HOME/.config/typa"
+cd apps/desktop
+bunx tauri signer generate -w "$HOME/.config/typa/updater.key"
 ```
 
-This is a custom tap hosted in this repository, so the explicit repository URL is
-required when first tapping it. Typa's in-app updater works for these installations
-too. Homebrew records its own installed version separately from in-app updates.
-Because the cask declares `auto_updates true`, opt into Homebrew-managed upgrades with:
+Keep the private key and its password backed up. Installed copies trust this key, so losing it means they can no longer receive updates.
 
-```sh
-brew update
-brew upgrade --cask --greedy typa
-```
+In GitHub Settings → Secrets and variables → Actions:
 
-If a manually installed `/Applications/Typa.app` already exists, Homebrew may refuse
-to overwrite it. Quit Typa and move the old app bundle aside before installing.
-Keep Typa's application data; removing the app bundle does not require deleting it.
+| Type | Name | Value |
+| --- | --- | --- |
+| Variable | `TAURI_UPDATER_PUBLIC_KEY` | Contents of `updater.key.pub` |
+| Secret | `TAURI_SIGNING_PRIVATE_KEY` | Contents of `updater.key` |
+| Secret | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Key password; omit if empty |
 
-## Verify locally
+### Apple signing (optional)
 
-```sh
-bun test scripts/release.test.mjs
-bun scripts/validate-release.mjs v0.1.0
-cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
-```
+For Developer ID signing and notarization, add `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password) and `APPLE_TEAM_ID`. See [Tauri's signing guide](https://v2.tauri.app/distribute/sign/macos/). Without them the app is signed ad hoc.
 
-For a real update test, install an older signed release in Applications, publish a
-higher version with the same updater key, then exercise Later, download, and install
-from both the startup prompt and menu. Test offline checks and read-only app locations.
-Local compilation cannot validate Apple notarization or the complete published update path.
+## Things to know
+
+- **The app is not notarized** unless the Apple secrets are set. The cask removes the quarantine flag after install so the app opens. People who download the DMG directly have to right-click → Open the first time.
+- **Version files in the repository are not updated.** Only release builds get the real version. You do not need to edit them when releasing.
+- **Do not create `v*` tags by hand.** The workflow treats the latest tag as the last release, so a manual tag changes the next version number.
+- **Do not replace assets of a published release.** Push a fix instead, which ships as a new version.
+- **A broken release** can be removed with `gh release delete vX.Y.Z --cleanup-tag`. Installed copies that already updated keep that version until the next release.

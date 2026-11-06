@@ -1,55 +1,135 @@
-name: Build macOS release
+name: Release
 
+# Every push to master ships a new version: tag, GitHub release, in-app update and Homebrew cask.
+# The commit messages decide the version (see scripts/next-version.sh).
 on:
   push:
-    tags: ['v*']
+    branches: [master]
   workflow_dispatch:
     inputs:
-      tag:
-        description: Existing release tag (vMAJOR.MINOR.PATCH)
-        required: true
-        type: string
+      bump:
+        description: Version bump
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
 
 permissions:
   contents: write
 
+# Releases run one at a time, in push order, so two pushes never claim the same version.
 concurrency:
-  group: release-${{ inputs.tag || github.ref_name }}
+  group: release
   cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Pick the version
+        id: version
+        run: |
+          version="$(scripts/next-version.sh "${{ inputs.bump || 'auto' }}")"
+          if [[ -z "$version" ]]; then
+            echo "No new commits since the last release."
+          else
+            echo "Releasing $version"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @typa/engine test
+      - run: bun test scripts
+
+  # The release stays a draft until every build has passed its checks.
+  draft:
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.draft.outputs.release-id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Create the draft release
+        id: draft
+        run: |
+          # A failed earlier run can leave a draft with this tag behind.
+          if gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null | grep -q true; then
+            gh release delete "$TAG" --yes
+          fi
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || true)"
+          range="${previous:+$previous..}HEAD"
+          {
+            echo "## Changes"
+            git log "$range" --no-merges --format='- %s (%h)'
+            echo
+            echo "Install with Homebrew: \`brew tap tahsinature/tap && brew trust tahsinature/tap && brew install --cask typa\`"
+            echo
+            echo "Typa updates itself. Homebrew users can also run \`brew upgrade --cask --greedy typa\`."
+          } > notes.md
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md
+          echo "release-id=$(gh release view "$TAG" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
+
   build:
-    # Serialize builds so both architectures safely merge into latest.json.
+    needs: [version, draft]
+    # Builds upload one at a time so each can safely merge its platforms into latest.json.
     strategy:
       max-parallel: 1
       fail-fast: true
       matrix:
-        target: [aarch64-apple-darwin, x86_64-apple-darwin]
-    runs-on: macos-latest
-    env:
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        include:
+          # To ship another platform, add a row here, e.g. a windows-latest runner
+          # with args "--bundles nsis" and no rust-targets.
+          - platform: macos
+            runner: macos-latest
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target universal-apple-darwin --bundles app,dmg
+            bundle-dir: apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle
+    runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.4.2'
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
-      - name: Validate release version and updater credentials
+          targets: ${{ matrix.rust-targets }}
+      - run: bun install --frozen-lockfile
+
+      - name: Stamp the version
+        run: bun scripts/set-version.mjs "${{ needs.version.outputs.version }}"
+
+      - name: Configure the updater
+        shell: bash
         env:
           UPDATER_PUBLIC_KEY: ${{ vars.TAURI_UPDATER_PUBLIC_KEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          bun scripts/validate-release.mjs "$RELEASE_TAG"
-          bun test scripts/release.test.mjs
           test -n "$UPDATER_PUBLIC_KEY" || { echo 'Set TAURI_UPDATER_PUBLIC_KEY repository variable'; exit 1; }
           test -n "$TAURI_SIGNING_PRIVATE_KEY" || { echo 'Set TAURI_SIGNING_PRIVATE_KEY repository secret'; exit 1; }
           bun -e 'await Bun.write("apps/desktop/src-tauri/tauri.release.conf.json", JSON.stringify({ bundle: { createUpdaterArtifacts: true }, plugins: { updater: { pubkey: process.env.UPDATER_PUBLIC_KEY.trim() } } }))'
-      - run: bun install --frozen-lockfile
+
       - name: Configure optional Apple signing
+        if: matrix.platform == 'macos'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -72,22 +152,60 @@ jobs:
                       delimiter = uuid.uuid4().hex
                       output.write(f'{name}<<{delimiter}\n{value}\n{delimiter}\n')
           PY
+
       - uses: tauri-apps/tauri-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tauriScript: bunx tauri
-          args: --target ${{ matrix.target }} --bundles app,dmg --config src-tauri/tauri.release.conf.json
-          tagName: ${{ env.RELEASE_TAG }}
-          releaseName: Typa ${{ env.RELEASE_TAG }}
-          releaseDraft: true
-          prerelease: false
-          generateReleaseNotes: true
+          args: ${{ matrix.args }} --config src-tauri/tauri.release.conf.json
+          releaseId: ${{ needs.draft.outputs.release-id }}
           uploadUpdaterJson: true
-      - name: Verify macOS bundle signatures
-        env:
-          BUILD_TARGET: ${{ matrix.target }}
-        run: python3 scripts/verify-macos-bundles.py "apps/desktop/src-tauri/target/$BUILD_TARGET/release/bundle"
+
+      - name: Check the macOS signatures
+        if: matrix.platform == 'macos'
+        run: python3 scripts/verify-macos-bundles.py "${{ matrix.bundle-dir }}"
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Publish the release
+        # Publishing creates the tag and makes installed apps see the update.
+        run: gh release edit "v${{ needs.version.outputs.version }}" -R "$GITHUB_REPOSITORY" --draft=false --latest
+
+  homebrew:
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Update Homebrew cask
+        run: |
+          if [[ -z "$TAP_TOKEN" ]]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set, so the Homebrew cask was not updated."
+            exit 0
+          fi
+          dmg="Typa_${VERSION}_universal.dmg"
+          gh release download "v$VERSION" --pattern "$dmg"
+          sha="$(shasum -a 256 "$dmg" | cut -d ' ' -f 1)"
+          git clone --depth 1 "https://x-access-token:$TAP_TOKEN@github.com/tahsinature/homebrew-tap.git" tap
+          sed -e "s/^  version \".*\"/  version \"$VERSION\"/" \
+              -e "s/^  sha256 \".*\"/  sha256 \"$sha\"/" \
+              packaging/typa.rb > tap/Casks/typa.rb
+          ruby -c tap/Casks/typa.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/typa.rb
+          git commit -m "typa $VERSION"
+          git push
