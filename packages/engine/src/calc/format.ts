@@ -1,3 +1,4 @@
+import { SYMBOLS } from './currencies';
 import { CURRENCY, sameDims } from './dimensions';
 import { type DateValue, type Quantity, type UnitTerm, type Value, displayValue } from './values';
 
@@ -18,8 +19,18 @@ function formatScientific(n: number): string {
   return `${mantissa}e${exponent.replace('+', '')}`;
 }
 
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatCurrency(n: number, code: string): string {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: code, currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+  const text = formatter.format(n);
+  const symbol = formatter.formatToParts(n).find((part) => part.type === 'currency')?.value;
+  if (!symbol || !(symbol in SYMBOLS)) {
+    return `${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+  }
+  // Keep codes for potentially ambiguous symbols, e.g. $20.00 CAD and ¥20.00 JPY.
+  return ['USD', 'EUR', 'GBP'].includes(code) || symbol === code ? text : `${text} ${code}`;
 }
 
 function formatInteger(n: number, radix: number, prefix: string): string {
@@ -52,7 +63,8 @@ function formatQuantity(q: Quantity): string {
     case 'scientific': digits = formatScientific(n); break;
     default: {
       const isMoney = q.units.length === 1 && q.units[0].power === 1 && sameDims(q.units[0].unit.dims, CURRENCY);
-      digits = isMoney ? formatCurrency(n) : formatNumber(n);
+      if (isMoney) return formatCurrency(n, q.units[0].unit.symbol);
+      digits = formatNumber(n);
     }
   }
   if (!q.units.length) return digits;

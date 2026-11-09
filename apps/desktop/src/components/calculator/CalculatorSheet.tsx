@@ -29,7 +29,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
 
   const results = useMemo(() => engine.evaluateDocument(input), [engine, input]);
   const summary = useMemo(
-    () => (selectedLines.length > 0 ? engine.summarize(selectedLines) : null),
+    () => engine.summarize(selectedLines.length > 0 ? selectedLines : undefined),
     // `results` is listed because summarize reads the engine's last evaluation.
     [engine, results, selectedLines],
   );
@@ -73,7 +73,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
           </div>
         )}
       </div>
-      <SelectionFooter summary={summary} />
+      <SelectionFooter summary={summary} selected={selectedLines.length > 0} />
     </div>
   );
 }

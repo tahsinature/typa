@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Excalidraw, MainMenu, exportToBlob } from "@excalidraw/excalidraw";
+import { Excalidraw, MainMenu, exportToBlob, exportToCanvas } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 import { invoke } from "@tauri-apps/api/core";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { IconButton } from "@/components/ui/icon-button";
+import { ImageCopyButton } from "@/components/ImageCopyButton";
 import { registerOutputView } from "./registry";
 
 /* -- Constants -- */
@@ -23,31 +23,26 @@ const BG_PRESETS = [
 /* -- Toolbar Icons -- */
 const iconStyle = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
-function CopyIcon() { return <svg {...iconStyle}><rect x="5" y="5" width="9" height="9" rx="1.5" /><path d="M3 11H2.5A1.5 1.5 0 011 9.5v-7A1.5 1.5 0 012.5 1h7A1.5 1.5 0 0111 2.5V3" /></svg>; }
 function ExportIcon() { return <svg {...iconStyle}><path d="M8 1v10M4 8l4 4 4-4M2 14h12" /></svg>; }
 
 /* -- Main Viewer -- */
 function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "light" }) {
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
-  const [bgColor, setBgColor] = useState("#1a1a2e");
+  const [bgColor, setBgColor] = useState("transparent");
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleCopy = useCallback(() => {
-    // Dispatch Shift+Option+C to trigger Excalidraw's built-in "Copy to clipboard as PNG"
-    const target = containerRef.current?.querySelector(".excalidraw") ?? document.activeElement;
-    if (!target) return;
-    target.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "C",
-        code: "KeyC",
-        shiftKey: true,
-        altKey: true,
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-  }, []);
+  const createCopyCanvas = useCallback(async () => {
+    const api = apiRef.current;
+    if (!api) throw new Error("The canvas is still loading");
+    const elements = api.getSceneElements().filter((element) => !element.isDeleted);
+    if (!elements.length) throw new Error("Add something to the canvas first");
+    return exportToCanvas({
+      elements,
+      files: api.getFiles(),
+      appState: { viewBackgroundColor: bgColor, exportBackground: bgColor !== "transparent" },
+      exportPadding: CANVAS_PADDING,
+      getDimensions: (width: number, height: number) => ({ width: width * 2, height: height * 2, scale: 2 }),
+    });
+  }, [bgColor]);
 
   const handleExport = useCallback(async () => {
     const api = apiRef.current;
@@ -59,7 +54,7 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
     const blob = await exportToBlob({
       elements,
       files: api.getFiles(),
-      appState: { viewBackgroundColor: bgColor },
+      appState: { viewBackgroundColor: bgColor, exportBackground: bgColor !== "transparent" },
       mimeType: "image/png",
       exportPadding: CANVAS_PADDING,
       getDimensions: (w: number, h: number) => ({ width: w * 2, height: h * 2, scale: 2 }),
@@ -79,7 +74,7 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
   }, [bgColor]);
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col overflow-hidden bg-bg">
+    <div className="h-full flex flex-col overflow-hidden bg-bg">
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 h-[36px] shrink-0 border-b border-border-subtle">
         {/* Background presets */}
@@ -107,7 +102,7 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
 
         <div className="flex-1" />
 
-        <IconButton tooltip="Copy to clipboard" onClick={handleCopy}><CopyIcon /></IconButton>
+        <ImageCopyButton createCanvas={createCopyCanvas} />
         <Tooltip>
           <TooltipTrigger asChild>
             <button

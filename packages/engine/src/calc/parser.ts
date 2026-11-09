@@ -1,7 +1,8 @@
 import type { ConversionTarget, Node, PercentRelation } from './ast';
+import { matchesCurrencySymbol } from './currencies';
 import { tokenize, type Token } from './lexer';
 import { CalcError, type UnitTerm } from './values';
-import { LENGTH, powDims, sameDims } from './dimensions';
+import { CURRENCY, LENGTH, powDims, sameDims } from './dimensions';
 
 export interface ParseContext {
   isVariable(name: string): boolean;
@@ -323,16 +324,45 @@ class Parser {
       return expr;
     }
 
-    if (t.type === 'currency') {
-      // "$20", "€2k": the symbol applies to the amount that follows.
-      const unit = this.ctx.findUnit(t.text)!;
-      this.pos++;
-      return { type: 'withUnits', expr: this.parsePostfix(), units: [unit] };
-    }
+    const currency = this.parseCurrencyPrefix();
+    if (currency) return currency;
 
     if (t.type === 'ident' && !isKeyword(t.text)) return this.parseIdentifier(t.text);
 
     throw this.unexpected();
+  }
+
+  /** Currency codes, names and symbols can precede an amount: "EUR 20", "CAD $20". */
+  private parseCurrencyPrefix(): Node | null {
+    const prefix = this.peek().text;
+    if (this.ctx.isVariable(prefix)) return null;
+    const currency = this.unitTermAt(0);
+    if (!currency || !sameDims(currency.term.unit.dims, CURRENCY)) return null;
+    let length = currency.length;
+    const symbol = this.peek(length);
+    if (symbol.type === 'currency') {
+      const unit = this.ctx.findUnit(symbol.text);
+      const matches = unit?.unit.symbol === currency.term.unit.symbol;
+      const compatible = matchesCurrencySymbol(symbol.text, currency.term.unit.symbol);
+      if (!matches && !compatible) throw new CalcError('Conflicting currency symbols');
+      length++;
+    }
+    const amount = this.peek(length);
+    const startsAmount = amount.type === 'number' || this.isOp('(', length)
+      || this.isOp('-', length) || this.isOp('+', length);
+    if (!startsAmount) return null;
+    this.pos += length;
+    const expr = this.parseUnary();
+    const value = expr.type === 'negate' ? expr.expr : expr;
+    if (value.type === 'withUnits' && value.units.length === 1
+      && value.units[0].power === 1 && sameDims(value.units[0].unit.dims, CURRENCY)) {
+      const code = value.units[0].unit.symbol;
+      if (code !== currency.term.unit.symbol && !matchesCurrencySymbol(prefix, code)) {
+        throw new CalcError('Conflicting currency symbols');
+      }
+      return expr;
+    }
+    return { type: 'withUnits', expr, units: [currency.term] };
   }
 
   private parseIdentifier(name: string): Node {

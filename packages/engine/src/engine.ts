@@ -1,7 +1,8 @@
-import { Calculator, type LineOutcome } from './calc/document';
+import { Calculator, expressionOf, type LineOutcome } from './calc/document';
 import { formatValue } from './calc/format';
 import { calculatorVocabulary, completionItems, type CalculatorVocabulary, type CompletionItem } from './calc/completions';
-import { divide, num, type Value } from './calc/values';
+import { convert, divide, num, type Value } from './calc/values';
+import { CURRENCY, sameDims } from './calc/dimensions';
 import type { LineResult } from './types';
 
 export interface SelectionSummary {
@@ -31,12 +32,21 @@ export class TypaEngine {
     this.calculator.currencies.setRates(rates);
   }
 
-  /** Sum, average and count of the results on the given 1-based lines of the last evaluated document. */
-  summarize(lines: number[]): SelectionSummary {
-    const values = lines
-      .map((n) => this.lastOutcomes[n - 1]?.value)
+  /** Summarizes selected 1-based lines, or the whole sheet without standalone aggregate rows. */
+  summarize(lines?: number[]): SelectionSummary {
+    const outcomes = lines
+      ? lines.map((n) => this.lastOutcomes[n - 1]).filter((outcome) => outcome !== undefined)
+      : this.lastOutcomes.filter((outcome) => !/^(sum|total|avg|average)$/i.test(expressionOf(outcome.input) ?? ''));
+    const values = outcomes
+      .map((outcome) => outcome.value)
       .filter((v): v is Value => v != null);
-    const { sum, count } = Calculator.sum(values);
+    let { sum, count } = Calculator.sum(values);
+    const currencies = new Set(values.flatMap((value) =>
+      value.kind === 'quantity' && sameDims(value.dims, CURRENCY) ? value.units.map((term) => term.unit.symbol) : [],
+    ));
+    if (sum?.kind === 'quantity' && sameDims(sum.dims, CURRENCY) && currencies.size > 1) {
+      sum = convert(sum, [this.calculator.findUnit('USD')!]);
+    }
     if (!sum) return { sum: null, average: null, count: 0 };
     return { sum: formatValue(sum), average: formatValue(divide(sum, num(count))), count };
   }

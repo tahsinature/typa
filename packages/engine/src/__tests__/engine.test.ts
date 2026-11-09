@@ -217,42 +217,42 @@ describe('Currency conversion', () => {
 
   it('converts USD to EUR', () => {
     const results = engine.evaluateDocument('100 USD to EUR');
-    expect(results[0].result).toContain('EUR');
-    const num = parseFloat(results[0].result!);
+    expect(results[0].result).toContain('€');
+    const num = parseFloat(results[0].result!.replace(/^[^\d-]+/, ''));
     expect(num).toBeCloseTo(92, 0);
   });
 
   it('converts EUR to USD', () => {
     const results = engine.evaluateDocument('92 EUR to USD');
-    expect(results[0].result).toContain('USD');
-    const num = parseFloat(results[0].result!);
+    expect(results[0].result).toContain('$');
+    const num = parseFloat(results[0].result!.replace(/^[^\d-]+/, ''));
     expect(num).toBeCloseTo(100, 0);
   });
 
   it('handles lowercase currency codes', () => {
     const results = engine.evaluateDocument('10 usd to eur');
-    expect(results[0].result).toContain('EUR');
+    expect(results[0].result).toContain('€');
   });
 
   it('handles currency names', () => {
     const results = engine.evaluateDocument('50 dollars to euros');
-    expect(results[0].result).toContain('EUR');
+    expect(results[0].result).toContain('€');
   });
 
   it('handles "in" for currency conversion', () => {
     const results = engine.evaluateDocument('100 USD in GBP');
-    expect(results[0].result).toContain('GBP');
+    expect(results[0].result).toContain('£');
   });
 
   it('formats currency with 2 decimal places', () => {
     const results = engine.evaluateDocument('1 USD to EUR');
-    expect(results[0].result).toMatch(/^\d+\.\d{2}\s+EUR$/);
+    expect(results[0].result).toMatch(/^€\d+\.\d{2}$/);
   });
 
   it('handles currency symbols ($)', () => {
     const results = engine.evaluateDocument('$100 to EUR');
-    expect(results[0].result).toContain('EUR');
-    const num = parseFloat(results[0].result!);
+    expect(results[0].result).toContain('€');
+    const num = parseFloat(results[0].result!.replace(/^[^\d-]+/, ''));
     expect(num).toBeCloseTo(92, 0);
   });
 });
@@ -345,7 +345,7 @@ describe('Numi-style calculator', () => {
     ['12 V * 2 A', '24 W'],
     ['2 kW * 3 h', '6 kWh'],
     ['1 kg * 9.8 m/s^2', '9.8 N'],
-    ['$5 per kg * 3 kg', '15.00 USD'],
+    ['$5 per kg * 3 kg', '$15.00'],
     ['10 m2 to sqft', '107.639104167 ft²'],
     ['1 GB to MB', '1,000 MB'],
     ['24 Kb to B', '3,000 B'],
@@ -391,6 +391,6 @@ describe('Numi-style calculator', () => {
 
   it('summarizes selected lines', () => {
     engine.evaluateDocument('$10\n$20\nhello\n$30');
-    expect(engine.summarize([1, 2, 3, 4])).toEqual({ sum: '60.00 USD', average: '20.00 USD', count: 3 });
+    expect(engine.summarize([1, 2, 3, 4])).toEqual({ sum: '$60.00', average: '$20.00', count: 3 });
   });
 });

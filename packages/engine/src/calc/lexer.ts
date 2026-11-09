@@ -1,5 +1,5 @@
 import { CalcError } from './values';
-import { SYMBOLS } from './currencies';
+import { CURRENCY_SYMBOLS } from './currencies';
 
 export type TokenType = 'number' | 'ident' | 'currency' | 'op' | 'eof';
 
@@ -43,15 +43,16 @@ export function tokenize(input: string): Token[] {
       continue;
     }
 
-    if (IDENT_START.test(ch)) {
-      while (i < input.length && IDENT_PART.test(input[i])) i++;
-      tokens.push({ type: 'ident', text: input.slice(start, i), start, end: i });
+    const symbol = CURRENCY_SYMBOLS.find((symbol) => input.startsWith(symbol, i));
+    if (symbol) {
+      i += symbol.length;
+      tokens.push({ type: 'currency', text: symbol, start, end: i });
       continue;
     }
 
-    if (ch in SYMBOLS) {
-      tokens.push({ type: 'currency', text: ch, start, end: i + 1 });
-      i++;
+    if (IDENT_START.test(ch)) {
+      while (i < input.length && IDENT_PART.test(input[i])) i++;
+      tokens.push({ type: 'ident', text: input.slice(start, i), start, end: i });
       continue;
     }
 

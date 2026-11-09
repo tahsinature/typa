@@ -24,12 +24,12 @@ const NAMES: Record<string, string> = {
 
 /** Symbols written before or after an amount. */
 export const SYMBOLS: Record<string, string> = {
+  'US$': 'USD', 'C$': 'CAD', 'CA$': 'CAD', 'A$': 'AUD', 'AU$': 'AUD',
+  'NZ$': 'NZD', 'HK$': 'HKD', 'S$': 'SGD', 'SG$': 'SGD', 'NT$': 'TWD', 'R$': 'BRL',
+  'CN¥': 'CNY', 'JP¥': 'JPY',
   $: 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY', '₹': 'INR', '₩': 'KRW', '₽': 'RUB',
   '₺': 'TRY', '₱': 'PHP', '฿': 'THB', '₫': 'VND', '₦': 'NGN', '₪': 'ILS', '৳': 'BDT',
 };
-
-/** Lowercase codes that are also ordinary words, so they only count in uppercase. */
-const WORD_LIKE_CODES = new Set(['TRY', 'ALL', 'TOP', 'MOP', 'CUP', 'BOB', 'GEL', 'MAD']);
 
 export function currencyNames(): string[] {
   return Object.keys(NAMES);
@@ -62,7 +62,6 @@ export class CurrencyTable {
     if (token.length !== 3) return undefined;
     const upper = token.toUpperCase();
     if (!(upper in this.rates)) return undefined;
-    if (token !== upper && WORD_LIKE_CODES.has(upper)) return undefined;
     return upper;
   }
 
@@ -74,4 +73,15 @@ export class CurrencyTable {
     }
     return unit;
   }
+}
+
+/** Longest first so qualified symbols such as C$ stay in one token. */
+export const CURRENCY_SYMBOLS = Object.keys(SYMBOLS).sort((a, b) => b.length - a.length);
+
+/** Checks ambiguous symbols against the explicit currency code, e.g. "$" with CAD or MXN. */
+export function matchesCurrencySymbol(symbol: string, code: string): boolean {
+  const parts = new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: code, currencyDisplay: 'narrowSymbol',
+  }).formatToParts(0);
+  return parts.some((part) => part.type === 'currency' && part.value === symbol);
 }
