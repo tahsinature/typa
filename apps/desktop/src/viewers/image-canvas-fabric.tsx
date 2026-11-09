@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Canvas, FabricImage, ActiveSelection, Point } from "fabric";
-import { invoke } from "@tauri-apps/api/core";
+import { saveImageFile } from "@/lib/image-file";
+import { copyCanvasToClipboard } from "@/lib/image-clipboard";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { registerViewer } from "./registry";
@@ -325,11 +326,7 @@ function ImageCanvasFabricViewer({ data }: { data: string; theme: "dark" | "ligh
     await new Promise((r) => setTimeout(r, 50));
 
     const exportCanvas = canvas.toCanvasElement(2);
-    const ctx = exportCanvas.getContext("2d");
-    if (!ctx) return;
-    const { width, height } = exportCanvas;
-    const imageData = ctx.getImageData(0, 0, width, height);
-    await invoke("copy_image_to_clipboard", { rgba: Array.from(imageData.data), width, height });
+    await copyCanvasToClipboard(exportCanvas);
   }, [bgColor]);
 
   const handleExport = useCallback(async () => {
@@ -356,8 +353,7 @@ function ImageCanvasFabricViewer({ data }: { data: string; theme: "dark" | "ligh
       exportCanvas.toBlob((b) => resolve(b), "image/png")
     );
     if (!blob) return;
-    const buffer = await blob.arrayBuffer();
-    await invoke("save_png_file", { pngData: Array.from(new Uint8Array(buffer)) });
+    await saveImageFile(blob, "Canvas");
   }, []);
 
   if (imageSrcs.length === 0) {

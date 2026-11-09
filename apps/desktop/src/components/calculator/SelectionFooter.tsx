@@ -1,5 +1,4 @@
 import type { SelectionSummary } from "@typa/engine";
-import { CheckIcon, CopyIcon } from "./icons";
 import { useCopy } from "./useCopy";
 
 /** Whole-sheet total by default; selection totals while text is selected. */
@@ -11,17 +10,17 @@ export function SelectionFooter({ summary, selected }: { summary: SelectionSumma
       {!selected && summary.sum && <span className="mr-auto text-text-faint">Select lines for subtotal</span>}
       {summary.sum ? (
         <>
-          <Stat label={selected ? "Selected total" : "Total"} value={summary.sum} />
-          {selected && summary.average && <Stat label="Avg" value={summary.average} />}
-          <Stat label="Count" value={String(summary.count)} />
           <button
             type="button"
+            title="Click to copy"
             onClick={() => copy(summary.sum ?? "")}
-            className="flex items-center gap-1 hover:text-text-secondary transition-colors cursor-pointer"
+            className="group cursor-pointer"
           >
-            {copied ? <CheckIcon /> : <CopyIcon />}
-            <span>{copied ? "Copied" : "Copy total"}</span>
+            <span className="text-text-faint">{selected ? "Selected total" : "Total"}</span>{" "}
+            <span className="text-text-secondary group-hover:text-text transition-colors">{copied ? "Copied" : summary.sum}</span>
           </button>
+          {summary.average && <Stat label="Avg" value={summary.average} />}
+          <Stat label="Count" value={String(summary.count)} />
         </>
       ) : (
         <span className="text-text-faint">{selected ? "No values in selection" : "No values to total"}</span>

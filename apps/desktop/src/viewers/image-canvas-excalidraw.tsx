@@ -1,14 +1,23 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Excalidraw, MainMenu, exportToBlob, exportToCanvas } from "@excalidraw/excalidraw";
+import { Excalidraw, MainMenu, exportToBlob, exportToCanvas, hashElementsVersion } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
-import { invoke } from "@tauri-apps/api/core";
+import { saveImageFile } from "@/lib/image-file";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ImageCopyButton } from "@/components/ImageCopyButton";
+import { OpenWithButton } from "@/components/OpenWithButton";
+import { ImageExportButton } from "@/components/ImageExportButton";
+import { exportScale } from "@/lib/image-clipboard";
+import { useImageSizeReport } from "@/lib/use-image-size-report";
 import { registerOutputView } from "./registry";
 
 /* -- Constants -- */
 const CANVAS_PADDING = 60;
+
+function scaledDimensions(width: number, height: number) {
+  const scale = exportScale(width, height);
+  return { width: Math.round(width * scale), height: Math.round(height * scale), scale };
+}
 
 const BG_PRESETS = [
   { id: "dark", color: "#1a1a2e" },
@@ -20,15 +29,11 @@ const BG_PRESETS = [
   { id: "transparent", color: "transparent" },
 ];
 
-/* -- Toolbar Icons -- */
-const iconStyle = { width: 14, height: 14, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-
-function ExportIcon() { return <svg {...iconStyle}><path d="M8 1v10M4 8l4 4 4-4M2 14h12" /></svg>; }
-
 /* -- Main Viewer -- */
 function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "light" }) {
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [bgColor, setBgColor] = useState("transparent");
+  const [sceneVersion, setSceneVersion] = useState(0);
 
   const createCopyCanvas = useCallback(async () => {
     const api = apiRef.current;
@@ -40,29 +45,34 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
       files: api.getFiles(),
       appState: { viewBackgroundColor: bgColor, exportBackground: bgColor !== "transparent" },
       exportPadding: CANVAS_PADDING,
-      getDimensions: (width: number, height: number) => ({ width: width * 2, height: height * 2, scale: 2 }),
+      getDimensions: scaledDimensions,
     });
   }, [bgColor]);
 
-  const handleExport = useCallback(async () => {
+  const createPng = useCallback(async () => {
     const api = apiRef.current;
-    if (!api) return;
-
-    const elements = api.getSceneElements().filter((el) => !el.isDeleted);
-    if (elements.length === 0) return;
-
-    const blob = await exportToBlob({
+    if (!api) throw new Error("The canvas is still loading");
+    const elements = api.getSceneElements().filter((element) => !element.isDeleted);
+    if (!elements.length) throw new Error("Add something to the canvas first");
+    return exportToBlob({
       elements,
       files: api.getFiles(),
       appState: { viewBackgroundColor: bgColor, exportBackground: bgColor !== "transparent" },
       mimeType: "image/png",
       exportPadding: CANVAS_PADDING,
-      getDimensions: (w: number, h: number) => ({ width: w * 2, height: h * 2, scale: 2 }),
+      getDimensions: scaledDimensions,
     });
-
-    const buffer = await blob.arrayBuffer();
-    await invoke("save_png_file", { pngData: Array.from(new Uint8Array(buffer)) });
   }, [bgColor]);
+
+  useImageSizeReport(createPng, sceneVersion);
+
+  const handleExport = useCallback(async () => {
+    try {
+      await saveImageFile(await createPng(), "Canvas");
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
+  }, [createPng]);
 
   // Update background color when preset changes
   useEffect(() => {
@@ -103,18 +113,8 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
         <div className="flex-1" />
 
         <ImageCopyButton createCanvas={createCopyCanvas} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={handleExport}
-              className="h-[24px] px-2.5 rounded-md text-[11px] font-medium text-white bg-accent hover:bg-accent-hover transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <ExportIcon />
-              Export
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>Download as PNG</TooltipContent>
-        </Tooltip>
+        <OpenWithButton createPng={createPng} baseName="Canvas" />
+        <ImageExportButton onExport={handleExport} />
       </div>
 
       {/* Excalidraw canvas */}
@@ -125,6 +125,7 @@ function ImageCanvasExcalidrawViewer(_props: { data: string; theme: "dark" | "li
       <div className="flex-1 min-h-0 relative">
         <Excalidraw
           excalidrawAPI={(api) => { apiRef.current = api; }}
+          onChange={(elements) => setSceneVersion(hashElementsVersion(elements))}
           initialData={{
             appState: {
               viewBackgroundColor: bgColor,

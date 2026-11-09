@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { getOutputViewsForTransform } from "@/viewers";
+import { TabIdContext } from "@/lib/tab-context";
 import { getInputViewsForTransform } from "@/widgets";
 
 /* -- Pane Header -- */
@@ -306,7 +307,11 @@ export function DualPane({ tabId }: { tabId: string }) {
   const hasError = output.startsWith("Error: ");
 
   if (selectedTransformId === "calculator") {
-    return <CalculatorSheet input={inputs[0] ?? ""} onInputChange={(v) => updateInput(tabId, 0, v)} theme={themeMode} />;
+    return (
+      <TabIdContext.Provider value={tabId}>
+        <CalculatorSheet input={inputs[0] ?? ""} onInputChange={(v) => updateInput(tabId, 0, v)} theme={themeMode} />
+      </TabIdContext.Provider>
+    );
   }
 
   /* -- Render input pane content -- */
@@ -396,13 +401,15 @@ export function DualPane({ tabId }: { tabId: string }) {
         {hasError ? (
           <TransformError message={output.slice(7)} />
         ) : activeOutputView && parsedData !== null ? (
-          <activeOutputView.component
-            data={parsedData}
-            theme={themeMode}
-            input={inputCount === 1 ? (inputs[0] ?? "") : undefined}
-            onInputChange={inputCount === 1 ? (v) => updateInput(tabId, 0, v) : undefined}
-            transform={transform}
-          />
+          <TabIdContext.Provider value={tabId}>
+            <activeOutputView.component
+              data={parsedData}
+              theme={themeMode}
+              input={inputCount === 1 ? (inputs[0] ?? "") : undefined}
+              onInputChange={inputCount === 1 ? (v) => updateInput(tabId, 0, v) : undefined}
+              transform={transform}
+            />
+          </TabIdContext.Provider>
         ) : (
           <EmptyOutput />
         )}

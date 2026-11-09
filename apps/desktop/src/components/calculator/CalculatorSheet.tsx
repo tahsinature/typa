@@ -8,6 +8,10 @@ import { defineMonacoThemes, sharedEditorOptions } from "@/lib/monaco";
 import { CALC_LANGUAGE_ID, registerCalcLanguage, setCompletionSource } from "./calcLanguage";
 import { ResultsOverlay } from "./ResultsOverlay";
 import { SelectionFooter } from "./SelectionFooter";
+import { buildRows } from "./calculation-rows";
+import { CalculatorViewTabs, type CalculatorView } from "./CalculatorViewTabs";
+import { CalculatorTableView } from "./CalculatorTableView";
+import { CalculatorImageView } from "./CalculatorImageView";
 
 interface CalculatorSheetProps {
   input: string;
@@ -26,6 +30,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
   const monacoRef = useRef<Monaco | null>(null);
   const [editorInstance, setEditorInstance] = useState<editor.IStandaloneCodeEditor | null>(null);
   const [selectedLines, setSelectedLines] = useState<number[]>([]);
+  const [view, setView] = useState<CalculatorView>("sheet");
 
   const results = useMemo(() => engine.evaluateDocument(input), [engine, input]);
   const summary = useMemo(
@@ -33,6 +38,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
     // `results` is listed because summarize reads the engine's last evaluation.
     [engine, results, selectedLines],
   );
+  const rows = useMemo(() => (view === "sheet" ? [] : buildRows(results, selectedLines)), [view, results, selectedLines]);
 
   useEffect(() => {
     if (monacoRef.current) registerCalcLanguage(monacoRef.current, engine.getVocabulary());
@@ -57,7 +63,11 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
 
   return (
     <div className="flex flex-col h-full">
-      <div className="relative flex-1 min-h-0">
+      <CalculatorViewTabs view={view} onChange={setView} selectionCount={selectedLines.length} />
+      {view === "table" && <div className="flex-1 min-h-0"><CalculatorTableView rows={rows} summary={summary} theme={theme} /></div>}
+      {view === "image" && <div className="flex-1 min-h-0"><CalculatorImageView rows={rows} summary={summary} theme={theme} /></div>}
+      {/* The editor stays mounted so its undo history, scroll position and selection survive view switches. */}
+      <div className={view === "sheet" ? "relative flex-1 min-h-0" : "hidden"}>
         <MonacoEditor
           value={input}
           language={CALC_LANGUAGE_ID}
@@ -73,7 +83,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
           </div>
         )}
       </div>
-      <SelectionFooter summary={summary} selected={selectedLines.length > 0} />
+      {view !== "image" && <SelectionFooter summary={summary} selected={selectedLines.length > 0} />}
     </div>
   );
 }

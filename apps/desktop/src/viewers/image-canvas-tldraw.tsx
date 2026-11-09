@@ -8,7 +8,8 @@ import {
   TLUiOverrides,
 } from "tldraw";
 import "tldraw/tldraw.css";
-import { invoke } from "@tauri-apps/api/core";
+import { saveImageFile } from "@/lib/image-file";
+import { copyCanvasToClipboard } from "@/lib/image-clipboard";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { IconButton } from "@/components/ui/icon-button";
 import { registerViewer } from "./registry";
@@ -190,12 +191,7 @@ function ImageCanvasTldrawViewer({ data }: { data: string; theme: "dark" | "ligh
       if (!ctx) return;
       ctx.scale(2, 2);
       ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      await invoke("copy_image_to_clipboard", {
-        rgba: Array.from(imageData.data),
-        width: canvas.width,
-        height: canvas.height,
-      });
+      await copyCanvasToClipboard(canvas);
     };
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.svg)}`;
   }, []);
@@ -222,8 +218,7 @@ function ImageCanvasTldrawViewer({ data }: { data: string; theme: "dark" | "ligh
       ctx.drawImage(img, 0, 0);
       canvas.toBlob(async (blob) => {
         if (!blob) return;
-        const buffer = await blob.arrayBuffer();
-        await invoke("save_png_file", { pngData: Array.from(new Uint8Array(buffer)) });
+        await saveImageFile(blob, "Canvas");
       }, "image/png");
     };
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.svg)}`;

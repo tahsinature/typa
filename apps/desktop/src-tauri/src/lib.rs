@@ -8,17 +8,35 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
+mod open_with;
 mod updater;
 
 /* ── Existing commands ── */
 
+/// Receives raw RGBA bytes as the request body (no JSON) with `width`/`height` headers.
+/// `async` so the clipboard write runs off the main thread and the UI stays responsive.
 #[tauri::command]
-fn copy_image_to_clipboard(rgba: Vec<u8>, width: u32, height: u32) -> Result<(), String> {
+async fn copy_image_to_clipboard(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(rgba) = request.body() else {
+        return Err("Expected raw image bytes".into());
+    };
+    let dimension = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<usize>().ok())
+            .ok_or_else(|| format!("Missing image {name}"))
+    };
+    let (width, height) = (dimension("width")?, dimension("height")?);
+    if rgba.len() != width * height * 4 {
+        return Err("Image size does not match its pixel data".into());
+    }
     let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
     let img = ImageData {
-        width: width as usize,
-        height: height as usize,
-        bytes: rgba.into(),
+        width,
+        height,
+        bytes: rgba.as_slice().into(),
     };
     clipboard.set_image(img).map_err(|e| e.to_string())
 }
@@ -44,14 +62,25 @@ fn read_image_from_clipboard() -> Result<Option<ClipboardImage>, String> {
     }
 }
 
+/// Receives PNG bytes as the raw request body and an ASCII `file-name` header.
 #[tauri::command]
-async fn save_png_file(app: tauri::AppHandle, png_data: Vec<u8>) -> Result<(), String> {
+async fn save_png_file(app: tauri::AppHandle, request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(png_data) = request.body() else {
+        return Err("Expected raw PNG bytes".into());
+    };
+    let file_name = request
+        .headers()
+        .get("file-name")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("Image.png")
+        .to_string();
+
     let (tx, rx) = std::sync::mpsc::channel();
 
     app.dialog()
         .file()
         .add_filter("PNG Image", &["png"])
-        .set_file_name("code.png")
+        .set_file_name(file_name)
         .save_file(move |path| {
             let _ = tx.send(path);
         });
@@ -60,7 +89,11 @@ async fn save_png_file(app: tauri::AppHandle, png_data: Vec<u8>) -> Result<(), S
 
     match path {
         Some(path) => {
-            std::fs::write(path.as_path().unwrap(), &png_data).map_err(|e| e.to_string())
+            let mut path = path.into_path().map_err(|e| e.to_string())?;
+            if path.extension().map_or(true, |ext| !ext.eq_ignore_ascii_case("png")) {
+                path.as_mut_os_string().push(".png");
+            }
+            std::fs::write(path, png_data).map_err(|e| e.to_string())
         }
         None => Ok(()),
     }
@@ -415,6 +448,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            open_with::clear_cache(app.handle());
             // Explicit app menu: re-adds the standard items (so Quit / copy /
             // paste stay intact) plus File → New Window. We intentionally do NOT
             // bind ⌘W here — that stays the in-app "close tab" shortcut.
@@ -476,6 +510,8 @@ pub fn run() {
             copy_image_to_clipboard,
             read_image_from_clipboard,
             save_png_file,
+            open_with::list_image_apps,
+            open_with::open_image_with,
             scan_ports,
             kill_process
         ])

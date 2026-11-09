@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useTabStore } from '@/stores/tabStore';
+import { useImageInfoStore, type ImageInfoEntry } from '@/stores/imageInfoStore';
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -15,6 +16,7 @@ function formatExecTime(ms: number): string {
 
 export function StatusBar() {
   const tab = useTabStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
+  const imageEntry = useImageInfoStore((s) => (tab ? s.byTab[tab.id] : undefined));
   const [copied, setCopied] = useState(false);
 
   const inputText = tab?.inputs[0] ?? '';
@@ -37,13 +39,17 @@ export function StatusBar() {
 
   return (
     <div className="flex items-center justify-between h-[26px] px-4 bg-bg-titlebar/80 border-t border-border-subtle/40 select-none shrink-0 relative">
-      {/* Left — input stats */}
+      {/* Left — input stats (not meaningful for image views) */}
       <div className="flex items-center gap-3 text-[10px] leading-none text-text-muted tabular-nums tracking-wide">
-        <span>{chars.toLocaleString()} chars</span>
-        <Dot />
-        <span>{words.toLocaleString()} words</span>
-        <Dot />
-        <span>{lines} {lines === 1 ? 'line' : 'lines'}</span>
+        {!imageEntry && (
+          <>
+            <span>{chars.toLocaleString()} chars</span>
+            <Dot />
+            <span>{words.toLocaleString()} words</span>
+            <Dot />
+            <span>{lines} {lines === 1 ? 'line' : 'lines'}</span>
+          </>
+        )}
       </div>
 
       {/* Center — execution time */}
@@ -56,9 +62,9 @@ export function StatusBar() {
         )}
       </div>
 
-      {/* Right — output size + copy */}
+      {/* Right — output size + copy, or the exported image size */}
       <div className="flex items-center gap-3 text-[10px] leading-none text-text-muted tabular-nums tracking-wide">
-        {output && (
+        {imageEntry ? <ImageSize entry={imageEntry} /> : output && (
           <>
             <span>{formatBytes(outputBytes)}</span>
             <Dot />
@@ -73,6 +79,32 @@ export function StatusBar() {
         )}
       </div>
     </div>
+  );
+}
+
+function ImageSize({ entry }: { entry: ImageInfoEntry }) {
+  const { info, measuring } = entry;
+  if (!info) {
+    return measuring
+      ? <span className="flex items-center gap-1.5 text-text-faint"><SpinnerIcon />Measuring…</span>
+      : <span className="text-text-faint">No image</span>;
+  }
+  return (
+    <span title={measuring ? 'Updating image size…' : 'Size of the exported PNG'} className="flex items-center gap-1.5">
+      {measuring && <SpinnerIcon />}
+      <span className={`transition-opacity duration-200 ${measuring ? 'opacity-50' : ''}`}>
+        {info.width.toLocaleString()} × {info.height.toLocaleString()} px <Dot /> PNG {formatBytes(info.bytes)}
+      </span>
+    </span>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="animate-spin motion-reduce:animate-none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" className="opacity-25" />
+      <path d="M21 12a9 9 0 0 0-9-9" />
+    </svg>
   );
 }
 

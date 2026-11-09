@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Stage, Layer, Image as KImage, Rect, Transformer } from "react-konva";
 import Konva from "konva";
-import { invoke } from "@tauri-apps/api/core";
+import { saveImageFile } from "@/lib/image-file";
+import { copyCanvasToClipboard } from "@/lib/image-clipboard";
 import { IconButton } from "@/components/ui/icon-button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { registerViewer } from "./registry";
@@ -363,11 +364,7 @@ function ImageCanvasViewer({ data }: { data: string; theme: "dark" | "light" }) 
     setSelectedId(null);
     await new Promise((r) => setTimeout(r, 50));
     const canvas = stage.toCanvas({ x: 0, y: 0, width: canvasBounds.width, height: canvasBounds.height, pixelRatio: 2 });
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const { width, height } = canvas;
-    const imageData = ctx.getImageData(0, 0, width, height);
-    await invoke("copy_image_to_clipboard", { rgba: Array.from(imageData.data), width, height });
+    await copyCanvasToClipboard(canvas);
   }, [canvasBounds]);
 
   const handleExport = useCallback(async () => {
@@ -378,8 +375,7 @@ function ImageCanvasViewer({ data }: { data: string; theme: "dark" | "light" }) 
     const dataUrl = stage.toDataURL({ x: 0, y: 0, width: canvasBounds.width, height: canvasBounds.height, pixelRatio: 2 });
     const res = await fetch(dataUrl);
     const blob = await res.blob();
-    const buffer = await blob.arrayBuffer();
-    await invoke("save_png_file", { pngData: Array.from(new Uint8Array(buffer)) });
+    await saveImageFile(blob, "Canvas");
   }, [canvasBounds]);
 
   if (imageSrcs.length === 0) {
