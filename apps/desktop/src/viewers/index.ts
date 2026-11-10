@@ -17,6 +17,7 @@ import "./ratio-workspace";
 import "./text-finder";
 import "./code-image";
 import "./port-viewer";
+import "./process-manager";
 import "./duplicate-viewer";
 import "./port-table";
 // import "./image-canvas-fabric";

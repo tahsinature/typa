@@ -15,6 +15,7 @@ import './text-finder';
 import './image-canvas';
 import './image-inspector';
 import './port-manager';
+import './process-manager';
 import './markdown-table';
 import './phone';
 import './present';

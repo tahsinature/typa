@@ -9,6 +9,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
 mod open_with;
+mod process_manager;
 mod updater;
 
 /* ── Existing commands ── */
@@ -513,6 +514,8 @@ pub fn run() {
             open_with::list_image_apps,
             open_with::open_image_with,
             scan_ports,
+            process_manager::scan_processes,
+            process_manager::terminate_process,
             kill_process
         ])
         .run(tauri::generate_context!())
