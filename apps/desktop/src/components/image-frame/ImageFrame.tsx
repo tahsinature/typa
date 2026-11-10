@@ -81,24 +81,27 @@ export function ImageFrame({ baseName, theme, contentKey, defaultWidth = 680, to
         <ImageExportButton onExport={handleExport} />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-8" style={{ backgroundColor: darkMode ? "#0d0d0d" : "#f0f0f0" }}>
-        <DragHandle active={dragging === "left"} onMouseDown={(event) => startDrag("left", event)} />
-        <div
-          ref={captureRef}
-          style={{
-            width,
-            background: showBg ? background : "transparent",
-            padding: showBg ? padding : 0,
-            borderRadius: showBg ? 12 : 0,
-            transition: "padding 0.2s ease, width 0.2s ease",
-          }}
-        >
-          <div style={{ backgroundColor: colors.background, borderRadius: 10, overflow: "hidden", boxShadow: showBg ? "0 20px 68px rgba(0,0,0,0.55)" : "none" }}>
-            <WindowDots />
-            {children({ darkMode, colors })}
+      <div className="flex-1 min-h-0 overflow-auto flex p-8" style={{ backgroundColor: darkMode ? "#0d0d0d" : "#f0f0f0" }}>
+        {/* Auto margins center previews that fit, and collapse to zero when they overflow. */}
+        <div className="m-auto flex shrink-0">
+          <DragHandle active={dragging === "left"} onMouseDown={(event) => startDrag("left", event)} />
+          <div
+            ref={captureRef}
+            style={{
+              width,
+              background: showBg ? background : "transparent",
+              padding: showBg ? padding : 0,
+              borderRadius: showBg ? 12 : 0,
+              transition: "padding 0.2s ease, width 0.2s ease",
+            }}
+          >
+            <div style={{ backgroundColor: colors.background, borderRadius: 10, overflow: "hidden", boxShadow: showBg ? "0 20px 68px rgba(0,0,0,0.55)" : "none" }}>
+              <WindowDots />
+              {children({ darkMode, colors })}
+            </div>
           </div>
+          <DragHandle active={dragging === "right"} onMouseDown={(event) => startDrag("right", event)} />
         </div>
-        <DragHandle active={dragging === "right"} onMouseDown={(event) => startDrag("right", event)} />
       </div>
     </div>
   );
