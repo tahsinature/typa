@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { registerOutputView } from "../registry";
 import { PresentEmpty } from "./empty";
 import { SizeToolbar } from "./size-toolbar";
+import { FontPicker } from "./font-picker";
 
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 600;
@@ -10,7 +11,7 @@ const MAX_FONT_SIZE = 600;
  * Uses the requested size, or finds the largest size that fits in Auto mode.
  * The size is written straight to the DOM so React never overrides a measured value.
  */
-function useFitText(text: string, manualSize: number | null) {
+function useFitText(text: string, manualSize: number | null, fontFamily: string) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [fittedSize, setFittedSize] = useState(MIN_FONT_SIZE);
@@ -48,14 +49,15 @@ function useFitText(text: string, manualSize: number | null) {
     const observer = new ResizeObserver(fit);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [text, manualSize]);
+  }, [text, manualSize, fontFamily]);
 
   return { containerRef, textRef, fontSize: manualSize ?? fittedSize };
 }
 
 function BigTextContent({ text }: { text: string }) {
   const [manualSize, setManualSize] = useState<number | null>(null);
-  const { containerRef, textRef, fontSize } = useFitText(text, manualSize);
+  const [fontFamily, setFontFamily] = useState("inherit");
+  const { containerRef, textRef, fontSize } = useFitText(text, manualSize, fontFamily);
   return (
     <div className="flex h-full flex-col">
       <SizeToolbar
@@ -71,7 +73,9 @@ function BigTextContent({ text }: { text: string }) {
           active: manualSize === null,
           onClick: () => setManualSize(null),
         }}
-      />
+      >
+        <FontPicker value={fontFamily} onChange={setFontFamily} />
+      </SizeToolbar>
       <div className="relative min-h-0 flex-1">
         <div
           ref={containerRef}
@@ -79,6 +83,7 @@ function BigTextContent({ text }: { text: string }) {
         >
           <div
             ref={textRef}
+            style={{ fontFamily }}
             className="my-auto w-full shrink-0 text-center font-semibold leading-tight whitespace-pre-wrap [overflow-wrap:anywhere]"
           >
             {text}
