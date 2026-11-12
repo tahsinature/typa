@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type ImageFileBaseName = "Canvas" | "Code Image" | "Calculation";
+export type ImageFileBaseName = "Canvas" | "Code Image" | "Calculation" | "Hierarchy";
 
 export interface ImageApp {
   name: string;

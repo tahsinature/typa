@@ -9,6 +9,7 @@ import './ratio';
 import './diff';
 import './image-diff';
 import './mermaid';
+import './hierarchy';
 import './code-image';
 import './text-stats';
 import './text-finder';

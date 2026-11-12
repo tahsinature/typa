@@ -3,6 +3,7 @@ import "./validation";
 import "./json-tree";
 import "./json-multi";
 import "./json-diagram";
+import "./hierarchy-tree";
 import "./table";
 import "./diff";
 import "./visual-diff";
