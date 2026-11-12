@@ -5,6 +5,15 @@ import { NodeEditor } from "./node-editor";
 import { RawSourceEditor } from "./raw-source-editor";
 import { useOutlineDocument } from "./use-outline-document";
 import { BulletList } from "./bullet-list";
+import { EditorHelp } from "./editor-help";
+import type { TreeIconName } from "./icons";
+
+type EditorView = "nodes" | "source" | "bullets";
+const modes: { value: EditorView; icon: TreeIconName; label: string; title: string }[] = [
+  { value: "nodes", icon: "tree", label: "Nodes", title: "Edit nodes with the keyboard" },
+  { value: "bullets", icon: "list", label: "Bullets", title: "Editable bullet list for copy and paste" },
+  { value: "source", icon: "source", label: "Raw", title: "Raw outline or JSON source" },
+];
 
 interface Props {
   source: string;
@@ -15,7 +24,7 @@ interface Props {
   onClose: () => void;
 }
 export function SourcePanel({ source, visible, selectedId, onSelect, onChange, onClose }: Props) {
-  const [view, setView] = useState<"nodes" | "source" | "bullets">("nodes");
+  const [view, setView] = useState<EditorView>("nodes");
   const editor = useOutlineDocument(source, onChange);
   const tree = useMemo(() => parseHierarchy(editor.document.source), [editor.document.source]);
   return (
@@ -34,9 +43,14 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
       }}
     >
       <div className="ht-panel-heading">
-        <span>
-          <TreeIcon name="list" /> My outline
-        </span>
+        <div className="ht-segment" aria-label="Editing mode">
+          {modes.map((mode) => (
+            <button key={mode.value} type="button" aria-pressed={view === mode.value} onClick={() => setView(mode.value)} title={mode.title}>
+              <TreeIcon name={mode.icon} />
+              {mode.label}
+            </button>
+          ))}
+        </div>
         <div className="ht-editor-history">
           <button type="button" className="ht-icon-button" onClick={editor.undo} disabled={!editor.canUndo} aria-label="Undo outline edit" title="Undo (⌘Z / Ctrl+Z)">
             <TreeIcon name="undo" width={14} height={14} />
@@ -44,42 +58,9 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
           <button type="button" className="ht-icon-button" onClick={editor.redo} disabled={!editor.canRedo} aria-label="Redo outline edit" title="Redo (⌘⇧Z / Ctrl+Shift+Z)">
             <TreeIcon name="redo" width={14} height={14} />
           </button>
-          <span />
-          <button type="button" className="ht-icon-button" onClick={onClose} aria-label="Hide editor panel">
+          <EditorHelp />
+          <button type="button" className="ht-icon-button" onClick={onClose} aria-label="Hide editor panel" title="Hide editor panel">
             <TreeIcon name="close" />
-          </button>
-        </div>
-      </div>
-      <div className="ht-editor-mode">
-        <div className="ht-segment" aria-label="Editing mode">
-          <button
-            type="button"
-            aria-pressed={view === "nodes"}
-            onClick={() => {
-              setView("nodes");
-            }}
-          >
-            <TreeIcon name="list" />
-            Nodes
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === "bullets"}
-            onClick={() => {
-              setView("bullets");
-            }}
-          >
-            Bullet list
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === "source"}
-            onClick={() => {
-              setView("source");
-            }}
-          >
-            <TreeIcon name="source" />
-            Raw source
           </button>
         </div>
       </div>
@@ -111,25 +92,6 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
           {editor.error}
         </div>
       )}
-      <details className="ht-source-help">
-        <summary>Editor & counting guide</summary>
-        <div>
-          <p>Enter adds a sibling. Shift+Enter adds a child. Tab nests under the previous sibling; Shift+Tab moves a branch out. Arrow keys move between rows.</p>
-          <p>Drag the grip to move a branch before, after, or inside another node. Alt+↑ / Alt+↓ reorder siblings. Moves include every descendant.</p>
-          <p>Use the quantity field for leaf totals. Group badges show leaves; group quantities are calculated automatically. Blank nodes appear as “Untitled” in the diagram.</p>
-          <p>Paste an indented list or JSON into a node to import a branch. The raw source view accepts bullets, numbered lists, and JSON with name and children fields.</p>
-          <p>
-            The bullet list is editable. Select any text to copy formatted bullets, or select all within the editor to replace the list by pasting. Changes sync across all views.
-          </p>
-          <p>
-            Undo and redo include typing, quantity edits, and branch moves. Duplicate names stay separate. Up to 5,000 entries and 64 levels. Escape releases the editor’s keyboard
-            focus.
-          </p>
-        </div>
-      </details>
-      <div className="ht-source-footer">
-        <span className="ht-live-dot" /> All data stays on your device
-      </div>
     </aside>
   );
 }

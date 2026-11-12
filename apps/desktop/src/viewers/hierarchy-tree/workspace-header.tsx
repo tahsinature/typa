@@ -1,60 +1,60 @@
 import { useRef } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TreeIcon } from "./icons";
-import { ExamplePicker } from "./example-picker";
+import { hierarchyExamples } from "./examples";
 
 interface Props {
-  sourceOpen: boolean;
   ready: boolean;
   copied: boolean;
   exporting: boolean;
   canExport: boolean;
-  onToggleSource: () => void;
   onCopyJson: () => void;
   onExport: () => void;
   onImportSource: (source: string) => void;
   onNotice: (message: string) => void;
   onLoadExample: (source: string) => void;
 }
-export function WorkspaceHeader({ sourceOpen, ready, copied, exporting, canExport, onToggleSource, onCopyJson, onExport, onImportSource, onNotice, onLoadExample }: Props) {
+/** Export button plus an overflow menu for import, copy, and examples. */
+export function WorkspaceActions({ ready, copied, exporting, canExport, onCopyJson, onExport, onImportSource, onNotice, onLoadExample }: Props) {
   const importRef = useRef<HTMLInputElement>(null);
   return (
-    <header className="ht-header">
-      <div className="ht-title-lockup">
-        <span className="ht-brand-mark">
-          <TreeIcon width={22} height={22} />
-        </span>
-        <div>
-          <div className="ht-eyebrow">Diagram workspace</div>
-          <h1>Hierarchy Tree</h1>
-        </div>
-      </div>
-      <div className="ht-header-actions">
-        <ExamplePicker onLoad={onLoadExample} />
-        <button type="button" aria-label="Outline editor panel" className={`ht-button ${sourceOpen ? "is-active" : ""}`} aria-pressed={sourceOpen} onClick={onToggleSource}>
-          <TreeIcon name="source" />
-          <span>Editor</span>
-        </button>
-        <button type="button" className="ht-button" aria-label="Import outline or JSON file" onClick={() => importRef.current?.click()}>
-          <TreeIcon name="plus" />
-          <span>Import</span>
-        </button>
-        <button type="button" className="ht-button" aria-label="Copy hierarchy as JSON" disabled={!ready} onClick={onCopyJson}>
-          <TreeIcon name={copied ? "check" : "copy"} />
-          <span>{copied ? "Copied" : "Copy JSON"}</span>
-        </button>
-        <button
-          type="button"
-          className="ht-button ht-button-primary"
-          aria-label={exporting ? "Exporting image" : "Export tree as PNG"}
-          title="Export the current diagram, including expanded branches"
-          disabled={!canExport || exporting}
-          onClick={onExport}
-          aria-busy={exporting}
-        >
-          <TreeIcon name="download" />
-          <span>{exporting ? "Exporting…" : "Export PNG"}</span>
-        </button>
-      </div>
+    <div className="ht-header-actions">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="ht-icon-button" aria-label="More actions" title="More actions">
+            <TreeIcon name="more" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[200px]">
+          <DropdownMenuItem onSelect={() => importRef.current?.click()}>
+            <TreeIcon name="plus" className="mr-2" width={13} height={13} />
+            Import file…
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={!ready} onSelect={onCopyJson}>
+            <TreeIcon name={copied ? "check" : "copy"} className="mr-2" width={13} height={13} />
+            {copied ? "Copied JSON" : "Copy as JSON"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Load example (undo available)</DropdownMenuLabel>
+          {hierarchyExamples.map((example) => (
+            <DropdownMenuItem key={example.id} onSelect={() => onLoadExample(example.source)}>
+              {example.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <button
+        type="button"
+        className="ht-button ht-button-primary"
+        aria-label={exporting ? "Exporting image" : "Export tree as PNG"}
+        title="Export the current diagram, including expanded branches"
+        disabled={!canExport || exporting}
+        onClick={onExport}
+        aria-busy={exporting}
+      >
+        <TreeIcon name="download" />
+        <span>{exporting ? "Exporting…" : "Export"}</span>
+      </button>
       <input
         ref={importRef}
         type="file"
@@ -76,6 +76,6 @@ export function WorkspaceHeader({ sourceOpen, ready, copied, exporting, canExpor
           }
         }}
       />
-    </header>
+    </div>
   );
 }

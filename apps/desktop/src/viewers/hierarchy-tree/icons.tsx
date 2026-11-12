@@ -8,6 +8,7 @@ const paths = {
   indent: "M10 5h11M10 12h11M10 19h11M2 8l4 4-4 4",
   outdent: "M10 5h11M10 12h11M10 19h11M6 8l-4 4 4 4",
   up: "m6 14 6-6 6 6",
+  parent: "M9 14 4 9l5-5M20 20v-7a4 4 0 0 0-4-4H4",
   trash: "M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7",
   tree: "M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4",
   right: "M4 4h6v6H4zM16 2h5v5h-5zM16 14h5v5h-5zM10 7h3v-3h3M13 7v10h3",
@@ -29,6 +30,9 @@ const paths = {
   fit: "M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5M8 8h8v8H8z",
   check: "m5 12 4 4L19 6",
   map: "m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5ZM9 3v16M15 5v16",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+  panel: "M3 4h18v16H3zM9 4v16",
+  help: "M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3m.1 4h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
 } as const;
 
 export type TreeIconName = keyof typeof paths;

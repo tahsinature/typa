@@ -80,9 +80,6 @@ export function NodeEditorRow(props: Props) {
         >
           {hasChildren ? <TreeIcon name="chevron" width={11} height={11} /> : <span />}
         </button>
-        <span className="ht-edit-number" aria-hidden="true">
-          {props.number}.
-        </span>
         <input
           ref={props.inputRef}
           className="ht-node-name-input"
@@ -97,13 +94,13 @@ export function NodeEditorRow(props: Props) {
           autoComplete="off"
         />
         {hasChildren ? (
-          <span className="ht-editor-leaf-count" title={`All nested leaves, including collapsed groups · quantity ${formatCount(props.quantity)}`}>
-            {formatCount(props.leaves)} {props.leaves === 1 ? "leaf" : "leaves"}
+          <span className="ht-editor-leaf-count" title={`${formatCount(props.leaves)} nested ${props.leaves === 1 ? "leaf" : "leaves"} · quantity ${formatCount(props.quantity)}`}>
+            {formatCount(props.leaves)}
           </span>
         ) : (
           <input
             type="number"
-            className="ht-node-quantity-input"
+            className={`ht-node-quantity-input ${entry.quantity === 1 ? "is-default" : ""}`}
             min="0"
             step="any"
             value={quantityText}

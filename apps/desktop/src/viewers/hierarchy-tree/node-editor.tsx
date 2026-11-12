@@ -25,6 +25,7 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
   const [folded, setFolded] = useState<Set<string>>(new Set());
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [drop, setDrop] = useState<EditorDrop | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   const inputs = useRef(new Map<string, HTMLInputElement>());
   const sensors = useSensors(useSensor(PointerSensor));
   const selectedIndex = selectedId?.startsWith("entry-") ? Number(selectedId.slice(6)) : -1;
@@ -37,6 +38,11 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
     input.setSelectionRange(input.value.length, input.value.length);
     input.scrollIntoView({ block: "nearest" });
   }, [editor.focusRequest]);
+  useLayoutEffect(() => {
+    if (!pendingFocus) return;
+    focusRow(pendingFocus);
+    setPendingFocus(null);
+  }, [pendingFocus]);
 
   function reveal(next: OutlineEntry[], id: string | null) {
     setFolded((previous) => {
@@ -62,6 +68,23 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
     const next = removeOutlineBranch(entries, id);
     changeBranch(next.entries, next.focusId);
   }
+  function toggleFold(id: string) {
+    setFolded((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  /** Unfold any collapsed ancestors, then focus the row once it renders. */
+  function revealAndFocus(id: string) {
+    reveal(entries, id);
+    setPendingFocus(id);
+  }
+  function focusParent(index: number) {
+    const parent = outlineParent(entries, index);
+    if (parent >= 0) revealAndFocus(entries[parent].id);
+  }
   function focusRow(id: string) {
     const input = inputs.current.get(id);
     input?.focus();
@@ -80,7 +103,22 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
   });
   function keyDown(event: KeyboardEvent<HTMLInputElement>, entry: OutlineEntry) {
     if (event.nativeEvent.isComposing) return;
-    if (event.key === "Enter") {
+    const index = entries.findIndex((item) => item.id === entry.id);
+    const mod = event.metaKey || event.ctrlKey;
+    if (event.altKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      focusParent(index);
+    } else if (event.altKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      const child = entries[index + 1];
+      if (child && child.depth > entry.depth) revealAndFocus(child.id);
+    } else if (mod && event.key === ".") {
+      event.preventDefault();
+      if (tree.nodes[index]?.children.length) toggleFold(entry.id);
+    } else if (mod && event.shiftKey && event.key === "Backspace") {
+      event.preventDefault();
+      remove(entry.id);
+    } else if (event.key === "Enter") {
       event.preventDefault();
       if (!entry.name.trim() && entry.depth > 0 && !event.shiftKey) changeBranch(outdentOutlineBranch(entries, entry.id), entry.id);
       else if (entry.name.trim() || event.shiftKey) add(entry.id, event.shiftKey);
@@ -95,8 +133,7 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
         const next = rows[index + (event.key === "ArrowUp" ? -1 : 1)];
         if (next) focusRow(next.entry.id);
       }
-    } else if (event.key === "Backspace" && !entry.name && !event.metaKey && !event.ctrlKey) {
-      const index = entries.findIndex((item) => item.id === entry.id);
+    } else if (event.key === "Backspace" && !entry.name && !mod) {
       if (outlineBranchEnd(entries, index) === index + 1) {
         event.preventDefault();
         remove(entry.id);
@@ -116,14 +153,6 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
   }
   return (
     <div className="ht-node-editor">
-      <div className="ht-node-editor-caption">
-        <span>
-          YOUR NODES <small>{entries.length}</small>
-        </span>
-        <span>
-          Name <span className="ht-quantity-caption">Qty / leaves</span>
-        </span>
-      </div>
       <DndContext
         sensors={sensors}
         collisionDetection={pointerWithin}
@@ -175,14 +204,7 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
                 editor.activate(entry.id);
                 onSelect(`entry-${index}`);
               }}
-              onFold={() =>
-                setFolded((previous) => {
-                  const next = new Set(previous);
-                  if (next.has(entry.id)) next.delete(entry.id);
-                  else next.add(entry.id);
-                  return next;
-                })
-              }
+              onFold={() => toggleFold(entry.id)}
               onNameChange={(value) =>
                 editor.commit(
                   entries.map((item) => (item.id === entry.id ? { ...item, name: value } : item)),
@@ -204,7 +226,7 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
           ))}
           <button type="button" className="ht-add-node" onClick={() => add(null)}>
             <TreeIcon name="plus" width={14} height={14} />
-            Add a node<span>↵</span>
+            Add node
           </button>
         </div>
         <DragOverlay dropAnimation={null}>
@@ -219,10 +241,11 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
       </DndContext>
       {active && (
         <div className="ht-node-actions" aria-label={`Actions for ${active.name || "untitled node"}`}>
-          <button type="button" className="ht-add-child" onClick={() => add(active.id, true)}>
+          <button type="button" className="ht-add-child" title="Add child (⇧Enter)" onClick={() => add(active.id, true)}>
             <TreeIcon name="plus" width={12} height={12} />
             Add child
           </button>
+          <Action icon="parent" label="Go to parent (⌥←)" disabled={active.depth === 0} onClick={() => focusParent(entries.findIndex((entry) => entry.id === active.id))} />
           <Action
             icon="indent"
             label="Indent node (Tab)"
@@ -231,40 +254,26 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
           />
           <Action
             icon="outdent"
-            label="Outdent node (Shift+Tab)"
+            label="Outdent node (⇧Tab)"
             disabled={!outdentOutlineBranch(entries, active.id)}
             onClick={() => changeBranch(outdentOutlineBranch(entries, active.id), active.id)}
           />
           <Action
             icon="up"
-            label="Move branch up (Alt+Up)"
+            label="Move branch up (⌥↑)"
             disabled={!shiftOutlineBranch(entries, active.id, -1)}
             onClick={() => changeBranch(shiftOutlineBranch(entries, active.id, -1), active.id)}
           />
           <Action
             icon="chevron"
-            label="Move branch down (Alt+Down)"
+            label="Move branch down (⌥↓)"
             className="ht-move-down"
             disabled={!shiftOutlineBranch(entries, active.id, 1)}
             onClick={() => changeBranch(shiftOutlineBranch(entries, active.id, 1), active.id)}
           />
-          <Action icon="trash" label="Delete branch (undo available)" className="ht-delete-node" onClick={() => remove(active.id)} />
+          <Action icon="trash" label="Delete branch (⌘⇧⌫, undo available)" className="ht-delete-node" onClick={() => remove(active.id)} />
         </div>
       )}
-      <div className="ht-node-key-hints">
-        <span>
-          <kbd>↵</kbd> sibling
-        </span>
-        <span>
-          <kbd>⇧ ↵</kbd> child
-        </span>
-        <span>
-          <kbd>Tab</kbd> nest
-        </span>
-        <span>
-          <kbd>⇧ Tab</kbd> outdent
-        </span>
-      </div>
       <div className="ht-editor-announcement" role="status" aria-live="polite">
         {drop ? `${drop.placement === "inside" ? "Nest inside" : `Move ${drop.placement}`} ${entries.find((entry) => entry.id === drop.id)?.name || "Untitled"}` : ""}
       </div>

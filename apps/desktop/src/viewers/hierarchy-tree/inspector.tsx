@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import type { Hierarchy, HierarchyNode } from "@typa/engine";
 import { TreeIcon } from "./icons";
 import { hierarchyColors, formatCount, getAncestors } from "./model";
@@ -36,10 +36,14 @@ export function NodeInspector({ tree, selectedId, onSelect, onClose }: { tree: H
           <h3>Path to this entry</h3>
           <nav className="ht-breadcrumb" aria-label="Entry ancestors">
             {path.map((entry, index) => (
-              <button key={entry.id} type="button" onClick={() => onSelect(entry.id)} aria-current={entry.id === node.id ? "location" : undefined}>
-                <span className="ht-path-rail" aria-hidden="true">
-                  {index === path.length - 1 ? "●" : "○"}
-                </span>
+              <button
+                key={entry.id}
+                type="button"
+                style={{ "--depth": index } as CSSProperties}
+                onClick={() => onSelect(entry.id)}
+                aria-current={entry.id === node.id ? "location" : undefined}
+              >
+                <span className="ht-path-dot" style={{ background: colors.get(entry.id) }} aria-hidden="true" />
                 <span>{entry.name}</span>
               </button>
             ))}

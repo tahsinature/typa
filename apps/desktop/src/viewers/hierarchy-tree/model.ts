@@ -1,6 +1,15 @@
-import dagre from "dagre";
 import { Position, type Edge, type Node } from "@xyflow/react";
-import { layoutBalancedHierarchy, type BalancedGroup, type Hierarchy, type HierarchyNode } from "@typa/engine";
+import { layoutTree } from "./tree-layout";
+import {
+  BOARD_CARD_PADDING,
+  BOARD_SECTION_GAP,
+  layoutBalancedHierarchy,
+  type BoardCard,
+  type BoardMetrics,
+  type BoardSection,
+  type Hierarchy,
+  type HierarchyNode,
+} from "@typa/engine";
 
 export type CountMode = "leaves" | "nodes" | "quantity";
 export type Direction = "LR" | "TB" | "BALANCED";
@@ -39,7 +48,6 @@ export interface TreeNodeData extends Record<string, unknown> {
   entry: HierarchyNode | null;
   name: string;
   color: string;
-  direction: Direction;
   sourcePosition: Position;
   targetPosition: Position;
   collapsed: boolean;
@@ -48,7 +56,43 @@ export interface TreeNodeData extends Record<string, unknown> {
   mode: CountMode;
   onToggle: (id: string) => void;
 }
-export type DiagramNode = Node<TreeNodeData, "hierarchy">;
+export interface CardRow {
+  entry: HierarchyNode;
+  indent: number;
+  collapsed: boolean;
+  match: boolean;
+  count: number;
+}
+export interface GroupCardData extends Record<string, unknown> {
+  /** Header entry. Leaf list boxes have no header. */
+  entry: HierarchyNode | null;
+  color: string;
+  collapsed: boolean;
+  match: boolean;
+  count: number;
+  sections: { heading: CardRow | null; columns: CardRow[][] }[];
+  /** Edge handle side for leaf list boxes in the tree layouts. */
+  targetPosition: Position | null;
+  /** Selected row inside this card, if any. */
+  selectedRowId: string | null;
+  onToggle: (id: string) => void;
+  onSelect: (id: string) => void;
+}
+export type DiagramNode = Node<TreeNodeData, "hierarchy"> | Node<GroupCardData, "groupCard">;
+export interface LayoutNode {
+  id: string;
+  kind: BoardCard["kind"] | "node" | "leaves";
+  entry: HierarchyNode | null;
+  sections: BoardSection[];
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  sourcePosition: Position;
+  targetPosition: Position;
+}
+export function boardMetrics(compact: boolean): BoardMetrics {
+  return compact ? { nodeHeight: 34, headerHeight: 38, rowHeight: 22 } : { nodeHeight: 40, headerHeight: 44, rowHeight: 26 };
+}
 
 export function getAncestors(id: string, byId: Map<string, HierarchyNode>): HierarchyNode[] {
   const path: HierarchyNode[] = [];
@@ -83,62 +127,41 @@ export function layoutHierarchy(tree: Hierarchy, collapsed: Set<string>, query: 
     eligibleCount++;
     if (entries.length < VISIBLE_LIMIT) entries.push(entry);
   }
-  const candidates: { id: string; entry: HierarchyNode | null }[] = entries.length ? [{ id: OVERVIEW_ID, entry: null }, ...entries.map((entry) => ({ id: entry.id, entry }))] : [];
+  const shared = { colors, matches, eligibleCount, truncated: eligibleCount > VISIBLE_LIMIT };
   if (direction === "BALANCED") {
-    const balanced = layoutBalancedHierarchy(entries, tree.roots, OVERVIEW_ID, compact ? 72 : 88);
-    const positions = { top: Position.Top, bottom: Position.Bottom, left: Position.Left };
-    return {
-      nodes: balanced.nodes.map(({ sourceSide, targetSide, ...node }) => ({ ...node, sourcePosition: positions[sourceSide], targetPosition: positions[targetSide] })),
-      edges: balanced.edges.map(
-        (edge): Edge => ({
-          ...edge,
-          type: "balanced",
-          data: edge.route,
-          selectable: false,
-          style: { stroke: colors.get(edge.target), strokeWidth: 1.5, opacity: edge.route.kind === "overview" ? 0.35 : 0.65 },
-        }),
-      ),
-      groups: balanced.groups,
-      colors,
-      bounds: balanced.bounds,
-      matches,
-      eligibleCount,
-      truncated: eligibleCount > VISIBLE_LIMIT,
-    };
+    const metrics = boardMetrics(compact);
+    const board = layoutBalancedHierarchy(entries, tree.roots, OVERVIEW_ID, metrics);
+    const anchors = new Map<string, { x: number; y: number }>();
+    const nodes = board.cards.map((card): LayoutNode => {
+      const { x, y } = card.position;
+      anchors.set(card.id, { x: x + card.width / 2, y: y + Math.min(card.height, metrics.headerHeight) / 2 });
+      let top = y + metrics.headerHeight + BOARD_CARD_PADDING;
+      for (const { heading, columns } of card.sections) {
+        if (heading) {
+          anchors.set(heading.id, { x: x + card.width / 2, y: top + metrics.rowHeight / 2 });
+          top += metrics.rowHeight;
+        }
+        columns.forEach((column, columnIndex) =>
+          column.forEach((entry, row) => anchors.set(entry.id, { x: x + (card.width / columns.length) * (columnIndex + 0.5), y: top + (row + 0.5) * metrics.rowHeight })),
+        );
+        top += Math.max(0, ...columns.map((column) => column.length)) * metrics.rowHeight + BOARD_SECTION_GAP;
+      }
+      return { ...card, sourcePosition: Position.Bottom, targetPosition: Position.Top };
+    });
+    const header = board.cards.find((card) => card.kind === "header");
+    const edges: Edge[] = header
+      ? [{ id: `branch-${header.id}`, source: OVERVIEW_ID, target: header.id, type: "default", selectable: false, style: { stroke: "var(--cl-border)", strokeWidth: 1.6 } }]
+      : [];
+    return { ...shared, nodes, edges, anchors, bounds: board.bounds };
   }
-  const drawn = new Set(candidates.map((node) => node.id));
-  const edges: Edge[] = entries
-    .map((entry) => ({
-      id: `branch-${entry.id}`,
-      source: entry.parentId ?? OVERVIEW_ID,
-      target: entry.id,
-      type: "smoothstep",
-      selectable: false,
-      style: { stroke: colors.get(entry.id), strokeWidth: 1.5, opacity: 0.6 },
-    }))
-    .filter((edge) => drawn.has(edge.source));
-  const graph = new dagre.graphlib.Graph();
-  graph.setDefaultEdgeLabel(() => ({}));
-  graph.setGraph({ rankdir: direction, nodesep: compact ? 18 : 34, ranksep: compact ? 60 : 96, marginx: 30, marginy: 30 });
-  for (const node of candidates) graph.setNode(node.id, { width: 244, height: compact ? 72 : 88 });
-  for (const edge of edges) graph.setEdge(edge.source, edge.target);
-  if (candidates.length) dagre.layout(graph);
-  return {
-    nodes: candidates.map((node) => {
-      const position = graph.node(node.id);
-      return {
-        ...node,
-        position: { x: position.x - 122, y: position.y - (compact ? 36 : 44) },
-        sourcePosition: direction === "LR" ? Position.Right : Position.Bottom,
-        targetPosition: direction === "LR" ? Position.Left : Position.Top,
-      };
+  const layout = layoutTree(entries, OVERVIEW_ID, direction, compact ? { nodeHeight: 34, rowHeight: 22 } : { nodeHeight: 40, rowHeight: 26 }, colors);
+  const nodes = layout.nodes.map(
+    ({ columns, ...item }): LayoutNode => ({
+      ...item,
+      sections: columns.length ? [{ heading: null, columns }] : [],
+      sourcePosition: layout.sourcePosition,
+      targetPosition: layout.targetPosition,
     }),
-    edges,
-    groups: [] as BalancedGroup[],
-    colors,
-    bounds: { x: 0, y: 0, width: graph.graph().width || 1, height: graph.graph().height || 1 },
-    matches,
-    eligibleCount,
-    truncated: eligibleCount > VISIBLE_LIMIT,
-  };
+  );
+  return { ...shared, nodes, edges: layout.edges, anchors: layout.anchors, bounds: layout.bounds };
 }

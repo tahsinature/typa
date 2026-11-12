@@ -8,8 +8,8 @@ import { NodeInspector } from "./inspector";
 import { getAncestors, initialCollapsed, type CountMode, type Direction } from "./model";
 import { HierarchyOutline } from "./outline";
 import { SourcePanel } from "./source-panel";
-import { WorkspaceHeader } from "./workspace-header";
-import { TreeSummary, TreeToolbar } from "./workspace-controls";
+import { WorkspaceActions } from "./workspace-header";
+import { TreeStats, TreeToolbar } from "./workspace-controls";
 import { TreeCanvas, type CanvasActions } from "./tree-canvas";
 
 function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string; input?: string; onInputChange?: (value: string) => void; theme: "dark" | "light" }) {
@@ -116,30 +116,32 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
         }
       }}
     >
-      <WorkspaceHeader
-        sourceOpen={sourceOpen}
-        ready={ready}
-        copied={copied}
-        exporting={exporting}
-        canExport={ready && view === "diagram"}
-        onToggleSource={() => setSourceOpen((value) => !value)}
-        onCopyJson={() => void copyJson()}
-        onExport={() => void exportImage()}
-        onImportSource={(source) => {
-          replaceSource(source);
-          setSourceOpen(true);
-        }}
-        onLoadExample={replaceSource}
-        onNotice={setNotice}
-      />
-      <TreeSummary tree={tree} mode={mode} onModeChange={setMode} />
       <TreeToolbar
         view={view}
         direction={direction}
         compact={compact}
         query={query}
         ready={ready}
+        sourceOpen={sourceOpen}
         searchRef={searchRef}
+        stats={ready && <TreeStats tree={tree} mode={mode} onModeChange={setMode} />}
+        actions={
+          <WorkspaceActions
+            ready={ready}
+            copied={copied}
+            exporting={exporting}
+            canExport={ready && view === "diagram"}
+            onCopyJson={() => void copyJson()}
+            onExport={() => void exportImage()}
+            onImportSource={(source) => {
+              replaceSource(source);
+              setSourceOpen(true);
+            }}
+            onLoadExample={replaceSource}
+            onNotice={setNotice}
+          />
+        }
+        onToggleSource={() => setSourceOpen((value) => !value)}
         onViewChange={setView}
         onDirectionChange={setDirection}
         onQueryChange={setQuery}
