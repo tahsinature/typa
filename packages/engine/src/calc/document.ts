@@ -16,6 +16,8 @@ export interface LineOutcome {
   value: Value | null;
   result: string | null;
   error: string | null;
+  item?: string;
+  calculation?: string;
 }
 
 const DAY_MS = 86400000;
@@ -25,15 +27,20 @@ function isBlockBreak(trimmed: string): boolean {
   return !trimmed || trimmed.startsWith('#');
 }
 
-/** Removes everything that isn't part of the expression: labels, "quoted notes" and // comments. */
-export function expressionOf(raw: string): string | null {
+/** Separates explicit labels from expressions and removes notes and comments. */
+function lineParts(raw: string): { item: string; expression: string } | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('#')) return null;
   let expr = trimmed;
-  const label = expr.match(/^[A-Za-z][\w\s]*?:\s+(.+)$/);
-  if (label) expr = label[1];
+  const label = expr.match(/^([A-Za-z][\w\s]*?):\s+(.+)$/);
+  if (label) expr = label[2];
   expr = expr.replace(/"[^"]*"/g, ' ').replace(/\s\/\/.*$/, '').trim();
-  return expr || null;
+  return expr ? { item: label?.[1].trim() ?? '', expression: expr } : null;
+}
+
+/** Removes everything that isn't part of the expression: labels, "quoted notes" and // comments. */
+export function expressionOf(raw: string): string | null {
+  return lineParts(raw)?.expression ?? null;
 }
 
 export class Calculator {
@@ -52,19 +59,22 @@ export class Calculator {
 
     text.split('\n').forEach((raw, index) => {
       if (isBlockBreak(raw.trim())) blockStart = index + 1;
-      const expr = expressionOf(raw);
+      const parts = lineParts(raw);
       const base = { line: index + 1, input: raw };
-      if (expr === null) {
+      if (parts === null) {
         outcomes.push({ ...base, value: null, result: null, error: null });
         return;
       }
+      const expr = parts.expression;
       const block = outcomes.slice(blockStart);
       try {
-        const value = this.evaluateExpression(expr, outcomes, block);
-        outcomes.push({ ...base, value, result: formatValue(value), error: null });
+        const { value, calculation } = this.evaluateExpression(expr, outcomes, block);
+        const leadingLabel = expr.slice(0, expr.length - calculation.length).trim();
+        const item = [parts.item, leadingLabel].filter(Boolean).join(' ');
+        outcomes.push({ ...base, item, calculation, value, result: formatValue(value), error: null });
       } catch (e) {
         const error = e instanceof Error ? e.message : String(e);
-        outcomes.push({ ...base, value: null, result: null, error });
+        outcomes.push({ ...base, item: parts.item, calculation: expr, value: null, result: null, error });
       }
     });
     return outcomes;
@@ -91,11 +101,11 @@ export class Calculator {
     return { sum, count };
   }
 
-  private evaluateExpression(expr: string, previous: LineOutcome[], block: LineOutcome[]): Value {
+  private evaluateExpression(expr: string, previous: LineOutcome[], block: LineOutcome[]): { value: Value; calculation: string } {
     const scope = this.scopeFor(previous, block);
     const context = this.parseContext();
     try {
-      return evaluate(parse(expr, context), scope);
+      return { value: evaluate(parse(expr, context), scope), calculation: expr };
     } catch (error) {
       // "Rent 1200": ignore leading words that mean nothing to the calculator.
       const rest = this.withoutLeadingWord(expr);

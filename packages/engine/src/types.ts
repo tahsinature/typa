@@ -3,6 +3,9 @@ export interface LineResult {
   input: string;
   result: string | null;
   error: string | null;
+  /** Calculator label and evaluated expression, when available. */
+  item?: string;
+  calculation?: string;
 }
 
 export interface EvaluationResult {

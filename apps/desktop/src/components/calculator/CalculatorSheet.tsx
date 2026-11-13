@@ -64,7 +64,7 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
   return (
     <div className="flex flex-col h-full">
       <CalculatorViewTabs view={view} onChange={setView} selectionCount={selectedLines.length} />
-      {view === "table" && <div className="flex-1 min-h-0"><CalculatorTableView rows={rows} summary={summary} theme={theme} /></div>}
+      {view === "table" && <div className="flex-1 min-h-0"><CalculatorTableView rows={rows} /></div>}
       {view === "image" && <div className="flex-1 min-h-0"><CalculatorImageView rows={rows} summary={summary} theme={theme} /></div>}
       {/* The editor stays mounted so its undo history, scroll position and selection survive view switches. */}
       <div className={view === "sheet" ? "relative flex-1 min-h-0" : "hidden"}>

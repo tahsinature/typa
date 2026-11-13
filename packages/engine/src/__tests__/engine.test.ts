@@ -394,6 +394,35 @@ describe('Numi-style calculator', () => {
     expect(engine.summarize([1, 2, 3, 4])).toEqual({ sum: '$60.00', average: '$20.00', count: 3 });
   });
 
+  it.each([
+    ['Lace 180', 'Lace', '180', '180'],
+    ['Astor 180+280', 'Astor', '180+280', '460'],
+    ['Orna 550', 'Orna', '550', '550'],
+    ['Skirt 3325', 'Skirt', '3325', '3,325'],
+    ['Office supplies 180+280', 'Office supplies', '180+280', '460'],
+    ['Rent: 1200', 'Rent', '1200', '1,200'],
+    ['Lunch: $10 "shared meal" // paid', 'Lunch', '$10', '$10.00'],
+    ['180+280', '', '180+280', '460'],
+    ['half of 20', '', 'half of 20', '10'],
+    ['5 km to m', '', '5 km to m', '5,000 m'],
+  ])('separates item and calculation for %s', (input, item, calculation, result) => {
+    const [line] = engine.evaluateDocument(input);
+    expect(line).toMatchObject({ item, calculation, result, error: null });
+  });
+
+  it('keeps variable references in the calculation', () => {
+    const results = engine.evaluateDocument('rate = 5\nrate * 3\nCost rate * 3');
+    expect(results[0]).toMatchObject({ item: '', calculation: 'rate = 5', result: '5' });
+    expect(results[1]).toMatchObject({ item: '', calculation: 'rate * 3', result: '15' });
+    expect(results[2]).toMatchObject({ item: 'Cost', calculation: 'rate * 3', result: '15' });
+  });
+
+  it('preserves invalid calculations and their explicit labels', () => {
+    const [line] = engine.evaluateDocument('Invalid: 5 km + 3 kg');
+    expect(line).toMatchObject({ item: 'Invalid', calculation: '5 km + 3 kg', result: null });
+    expect(line.error).toMatch(/length.*mass/);
+  });
+
   it('rounds summary averages without changing expression results or totals', () => {
     engine.evaluateDocument('180\n180+280\n300\n250\n550\n3325');
     expect(engine.summarize()).toEqual({ sum: '5,065', average: '844.17', count: 6 });

@@ -21,7 +21,7 @@ export class TypaEngine {
 
   evaluateDocument(text: string): LineResult[] {
     this.lastOutcomes = this.calculator.evaluate(text);
-    return this.lastOutcomes.map(({ line, input, result, error }) => ({ line, input, result, error }));
+    return this.lastOutcomes.map(({ line, input, result, error, item, calculation }) => ({ line, input, result, error, item, calculation }));
   }
 
   /**
