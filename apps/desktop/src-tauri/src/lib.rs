@@ -452,47 +452,29 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             open_with::clear_cache(app.handle());
-            // Explicit app menu: re-adds the standard items (so Quit / copy /
-            // paste stay intact) plus File → New Window. We intentionally do NOT
-            // bind ⌘W here — that stays the in-app "close tab" shortcut.
+            // App menu and window actions. ⌘W stays the in-app "close tab" shortcut.
             let new_window = MenuItemBuilder::new("New Window")
                 .id("new_window")
                 .accelerator("CmdOrCtrl+N")
                 .build(app)?;
 
-            let preferences = MenuItemBuilder::new("Preferences…")
+            let preferences = MenuItemBuilder::new("Settings…")
                 .id("preferences")
                 .accelerator("CmdOrCtrl+,")
                 .build(app)?;
             let app_menu = SubmenuBuilder::new(app, "Typa")
-                .about(None)
+                .about_with_text("About Typa", None)
                 .item(&preferences)
                 .separator()
-                .services()
-                .separator()
-                .hide()
-                .hide_others()
-                .show_all()
-                .separator()
-                .quit()
+                .quit_with_text("Quit Typa")
                 .build()?;
 
             let file_menu = SubmenuBuilder::new(app, "File").item(&new_window).build()?;
 
-            let edit_menu = SubmenuBuilder::new(app, "Edit")
-                .undo()
-                .redo()
-                .separator()
-                .cut()
-                .copy()
-                .paste()
-                .select_all()
-                .build()?;
-
             let window_menu = SubmenuBuilder::new(app, "Window").minimize().build()?;
 
             let menu = MenuBuilder::new(app)
-                .items(&[&app_menu, &file_menu, &edit_menu, &window_menu])
+                .items(&[&app_menu, &file_menu, &window_menu])
                 .build()?;
             app.set_menu(menu)?;
 
