@@ -71,4 +71,3 @@ export function getVisibleData(reactTable: ReactTable<Record<string, unknown>>) 
   );
   return { cols, rows };
 }
-

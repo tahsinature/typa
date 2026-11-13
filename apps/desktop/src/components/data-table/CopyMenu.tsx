@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import type { Table } from "@tanstack/react-table";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { getVisibleData, serializeTable } from "./table-data";
-type TableCopyFormat = "tsv" | "csv";
-type TableCopyResult = "copied";
+import { getVisibleData } from "./table-data";
+import { copyTable, type TableCopyFormat, type TableCopyResult } from "./table-copy";
 
 const COPY_FORMATS: { format: TableCopyFormat; label: string }[] = [
   { format: "tsv", label: "Copy for Excel" },
   { format: "csv", label: "Copy as CSV" },
+  { format: "markdown", label: "Copy as Markdown" },
+  { format: "html", label: "Copy as rich-text table" },
+  { format: "json", label: "Copy as JSON" },
 ];
 
 export function CopyMenu({ table }: { table: Table<Record<string, unknown>> }) {
@@ -25,8 +27,7 @@ export function CopyMenu({ table }: { table: Table<Record<string, unknown>> }) {
     setCopying(true);
     try {
       const { cols, rows } = getVisibleData(table);
-      await navigator.clipboard.writeText(serializeTable(cols, rows, format));
-      setStatus("copied");
+      setStatus(await copyTable(cols, rows, format));
     } catch {
       setStatus("error");
     } finally {
@@ -35,8 +36,9 @@ export function CopyMenu({ table }: { table: Table<Record<string, unknown>> }) {
   };
 
   const message = status === "error" ? "Couldn't copy table. Try again."
+    : status === "plain-text" ? "Copied as plain text. Rich text is unavailable."
     : status === "copied" ? "Table copied" : "Copy table";
-  const copied = status === "copied";
+  const copied = status === "copied" || status === "plain-text";
 
   return (
     <div className="relative">

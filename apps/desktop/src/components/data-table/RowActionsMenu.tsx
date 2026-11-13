@@ -50,4 +50,3 @@ export function RowActionsMenu({ row, groups }: { row: Record<string, unknown>; 
     </DropdownMenu>
   );
 }
-

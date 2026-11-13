@@ -191,4 +191,3 @@ export function DataTable({ data: tableData, rowActions, renderCell, rightAligne
     </div>
   );
 }
-
