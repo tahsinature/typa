@@ -1,5 +1,6 @@
-import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { hierarchyToJson, parseHierarchy } from "@typa/engine";
+import { useTabStore } from "@/stores/tabStore";
 import { useTabId } from "@/lib/tab-context";
 import { registerOutputView } from "../registry";
 import { EmptyHierarchy } from "./empty-state";
@@ -13,6 +14,7 @@ import { TreeStats, TreeToolbar } from "./workspace-controls";
 import { TreeCanvas, type CanvasActions } from "./tree-canvas";
 
 function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string; input?: string; onInputChange?: (value: string) => void; theme: "dark" | "light" }) {
+  const tabId = useTabId();
   const deferredInput = useDeferredValue(input);
   const tree = useMemo(() => parseHierarchy(deferredInput), [deferredInput]);
   const byId = useMemo(() => new Map(tree.nodes.map((node) => [node.id, node])), [tree]);
@@ -29,6 +31,19 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
   const [copied, setCopied] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const actions = useRef<CanvasActions | null>(null);
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if (tabId !== useTabStore.getState().activeTabId) return;
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "f") return;
+      event.preventDefault();
+      event.stopPropagation();
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    }
+    window.addEventListener("keydown", focusSearch, true);
+    return () => window.removeEventListener("keydown", focusSearch, true);
+  }, [tabId]);
+
   const onReady = useCallback((value: CanvasActions | null) => {
     actions.current = value;
   }, []);
@@ -105,11 +120,6 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
     <div
       className="hierarchy-workspace"
       onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key === "f") {
-          event.preventDefault();
-          event.stopPropagation();
-          searchRef.current?.focus();
-        }
         if (event.key === "Escape") {
           setQuery("");
           setSelectedId(null);

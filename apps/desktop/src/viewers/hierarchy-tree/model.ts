@@ -50,6 +50,7 @@ export interface TreeNodeData extends Record<string, unknown> {
   color: string;
   sourcePosition: Position;
   targetPosition: Position;
+  showHandles: boolean;
   collapsed: boolean;
   match: boolean;
   count: number;
@@ -71,7 +72,7 @@ export interface GroupCardData extends Record<string, unknown> {
   match: boolean;
   count: number;
   sections: { heading: CardRow | null; columns: CardRow[][] }[];
-  /** Edge handle side for leaf list boxes in the tree layouts. */
+  /** Incoming connection side for grouped cards and leaf lists. */
   targetPosition: Position | null;
   /** Selected row inside this card, if any. */
   selectedRowId: string | null;
@@ -146,15 +147,12 @@ export function layoutHierarchy(tree: Hierarchy, collapsed: Set<string>, query: 
         );
         top += Math.max(0, ...columns.map((column) => column.length)) * metrics.rowHeight + BOARD_SECTION_GAP;
       }
-      return { ...card, sourcePosition: Position.Bottom, targetPosition: Position.Top };
+      return { ...card, sourcePosition: Position.Bottom, targetPosition: card.kind === "card" ? Position.Left : Position.Top };
     });
-    const header = board.cards.find((card) => card.kind === "header");
-    const edges: Edge[] = header
-      ? [{ id: `branch-${header.id}`, source: OVERVIEW_ID, target: header.id, type: "default", selectable: false, style: { stroke: "var(--cl-border)", strokeWidth: 1.6 } }]
-      : [];
+    const edges: Edge[] = [];
     return { ...shared, nodes, edges, anchors, bounds: board.bounds };
   }
-  const layout = layoutTree(entries, OVERVIEW_ID, direction, compact ? { nodeHeight: 34, rowHeight: 22 } : { nodeHeight: 40, rowHeight: 26 }, colors);
+  const layout = layoutTree(entries, OVERVIEW_ID, direction, compact ? { nodeHeight: 34, rowHeight: 22 } : { nodeHeight: 40, rowHeight: 26 });
   const nodes = layout.nodes.map(
     ({ columns, ...item }): LayoutNode => ({
       ...item,

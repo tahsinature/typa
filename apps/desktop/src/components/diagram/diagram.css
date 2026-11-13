@@ -1,0 +1,56 @@
+.diagram-canvas { --diagram-edge: #555; }
+[data-theme="light"] .diagram-canvas { --diagram-edge: #b0b0b8; }
+.diagram-node {
+  --diagram-surface: #26262a;
+  --diagram-divider: rgba(255,255,255,.06);
+  --diagram-key: #59b8ff;
+  --diagram-value: #dce5e7;
+  --diagram-muted: #b0b0b8;
+  --diagram-accent: #a78bfa;
+  position: relative;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: var(--diagram-surface);
+  color: var(--diagram-value);
+  font-size: 11.5px;
+  box-shadow: 0 2px 8px #0000004d, 0 1px 2px #00000033;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+[data-theme="light"] .diagram-node {
+  --diagram-surface: #fff;
+  --diagram-divider: rgba(0,0,0,.06);
+  --diagram-key: #761cea;
+  --diagram-value: #535353;
+  --diagram-muted: #555;
+  --diagram-accent: #7c3aed;
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 2px 8px #0000000f, 0 1px 2px #0000000a;
+}
+.diagram-node[data-highlight="selected"] { border-color: #a78bfa; background: #252030; box-shadow: 0 0 0 2px #a78bfa66, 0 0 16px #a78bfa1a; }
+.diagram-node[data-highlight="match"] { border-color: #34d058; background: #1a2e1e; box-shadow: 0 0 0 2px #34d05866; }
+.diagram-node[data-highlight="active"] { border-color: #f59e0b; background: #2e2a1e; box-shadow: 0 0 0 2px #f59e0b66; }
+.diagram-node[data-highlight="focus"] { border-color: #59b8ff; box-shadow: 0 0 0 3px #59b8ff66; }
+[data-theme="light"] .diagram-node[data-highlight="selected"] { background: #f5f3ff; }
+[data-theme="light"] .diagram-node[data-highlight="match"] { background: #f0fdf4; }
+[data-theme="light"] .diagram-node[data-highlight="active"] { background: #fffbeb; }
+.diagram-node-header {
+  display: flex; align-items: center; gap: 6px;
+  height: var(--diagram-header-height, 32px); padding: 0 12px;
+  flex-shrink: 0; border-radius: 9px 9px 0 0;
+  background: linear-gradient(180deg, #ffffff0d, #ffffff05);
+  color: var(--diagram-muted); font-size: 11px; font-weight: 600; letter-spacing: .3px;
+}
+.diagram-node-header:not(:last-child) { border-bottom: 1px solid var(--diagram-divider); }
+[data-theme="light"] .diagram-node-header { background: linear-gradient(180deg, #00000005, #0000000a); }
+.diagram-node-badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 1px 5px; border-radius: 4px; background: #ffffff0a; color: var(--diagram-accent); font-size: 11px; }
+[data-theme="light"] .diagram-node-badge { background: #00000008; }
+.diagram-node-action { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 18px; height: 18px; border-radius: 4px; color: var(--diagram-accent); background: #ffffff0f; cursor: pointer; }
+[data-theme="light"] .diagram-node-action { background: #0000000a; }
+.diagram-node-action:hover { background: #a78bfa26; }
+.diagram-node-action:focus-visible { outline: 2px solid var(--diagram-accent); outline-offset: 2px; }
+.diagram-node-row { position: relative; display: flex; align-items: center; justify-content: space-between; min-width: 0; }
+.diagram-node-row:not(:last-child) { border-bottom: 1px solid var(--diagram-divider); }
+.diagram-handle.react-flow__handle { width: 10px; height: 10px; min-width: 10px; min-height: 10px; border: 2px solid var(--diagram-edge, #555); background: var(--diagram-surface); border-radius: 50%; }
+.diagram-handle.react-flow__handle.source { border-color: var(--diagram-key); }
+.diagram-canvas .react-flow__node:focus-visible { outline: none; }
+.diagram-canvas .react-flow__node:focus-visible > .diagram-node { outline: 2px solid #a78bfa; outline-offset: 2px; }

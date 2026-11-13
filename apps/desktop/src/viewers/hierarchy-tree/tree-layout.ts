@@ -1,3 +1,4 @@
+import { DIAGRAM_FONT, DIAGRAM_EDGE_TYPE, diagramEdgeStyle } from "@/components/diagram/diagram-style";
 import dagre from "dagre";
 import { Position, type Edge } from "@xyflow/react";
 import type { HierarchyNode } from "@typa/engine";
@@ -26,7 +27,7 @@ let measureContext: CanvasRenderingContext2D | null | undefined;
 function textWidth(text: string, font: string) {
   if (measureContext === undefined) measureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   if (!measureContext) return text.length * 7;
-  measureContext.font = `${font} ${getComputedStyle(document.body).fontFamily}`;
+  measureContext.font = `${font} ${DIAGRAM_FONT}`;
   return measureContext.measureText(text).width;
 }
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -42,8 +43,8 @@ function splitColumns(leaves: HierarchyNode[]) {
   return Array.from({ length: columnCount }, (_, index) => leaves.slice(index * rows, (index + 1) * rows));
 }
 
-/** Lays out a top-down or left-right tree with curved edges. Each family's leaves are drawn together in one list box. */
-export function layoutTree(entries: HierarchyNode[], overviewId: string, direction: "LR" | "TB", metrics: TreeLayoutMetrics, colors: Map<string, string>) {
+/** Lays out a top-down or left-right tree with rounded right-angle connectors. Each family's leaves are drawn together in one list box. */
+export function layoutTree(entries: HierarchyNode[], overviewId: string, direction: "LR" | "TB", metrics: TreeLayoutMetrics) {
   const leavesByParent = new Map<string, HierarchyNode[]>();
   for (const entry of entries) {
     if (entry.children.length) continue;
@@ -64,20 +65,20 @@ export function layoutTree(entries: HierarchyNode[], overviewId: string, directi
     if (!bundled.has(entry.id)) items.push({ id: entry.id, kind: "node", entry, columns: [], width: nodeWidth(entry.name), height: metrics.nodeHeight });
   }
 
-  const edge = (source: string, target: string, color: string | undefined): Edge => ({
+  const edge = (source: string, target: string): Edge => ({
     id: `branch-${target}`,
     source,
     target,
-    type: "default",
+    type: DIAGRAM_EDGE_TYPE,
     selectable: false,
-    style: { stroke: color ?? "var(--cl-border)", strokeWidth: 1.6, opacity: 0.75 },
+    style: diagramEdgeStyle(),
   });
   const ids = new Set(items.map((item) => item.id));
   const edges = items
     .filter((item) => item.kind !== "overview")
     .map((item) => {
-      if (item.kind === "leaves") return edge(item.id.slice("leaves:".length), item.id, colors.get(item.columns[0][0].id));
-      return edge(item.entry!.parentId ?? overviewId, item.id, colors.get(item.id));
+      if (item.kind === "leaves") return edge(item.id.slice("leaves:".length), item.id);
+      return edge(item.entry!.parentId ?? overviewId, item.id);
     })
     .filter((link) => ids.has(link.source));
 

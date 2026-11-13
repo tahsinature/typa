@@ -1,10 +1,11 @@
+import { DiagramHandle, DiagramNodeAction, DiagramNodeBadge, DiagramNodeFrame, DiagramNodeHeader, DiagramNodeRow } from "@/components/diagram/DiagramNode";
+import { DIAGRAM_EDGE_TYPE, diagramEdgeStyle } from "@/components/diagram/diagram-style";
 import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
-  Handle,
   Position,
   useNodesState,
   useEdgesState,
@@ -94,7 +95,7 @@ function parseSingleRootGraph(data: unknown, rootLabel: string): { nodes: Node<N
         sourceHandle: `src-${edgeLabel}`,
         target: id,
         targetHandle: "target",
-        type: "smoothstep",
+        type: DIAGRAM_EDGE_TYPE,
       });
     }
 
@@ -267,24 +268,7 @@ function CopyIcon({ size = 11, color }: { size?: number; color: string }) {
 function TypeBadge({ isArray, isDark }: { isArray: boolean; isDark: boolean }) {
   const text = isArray ? "[]" : "{}";
   const color = isArray ? (isDark ? "#e8c479" : "#d97706") : (isDark ? "#a78bfa" : "#7c3aed");
-  return (
-    <span
-      style={{
-        fontSize: 9,
-        fontWeight: 700,
-        color,
-        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
-        padding: "1px 4px",
-        borderRadius: 4,
-        marginRight: 6,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        lineHeight: 1,
-      }}
-    >
-      {text}
-    </span>
-  );
+  return <DiagramNodeBadge style={{ color, fontSize: 9, fontWeight: 700, lineHeight: 1 }}>{text}</DiagramNodeBadge>;
 }
 
 function PathBreadcrumb({ path, isDark, onSegmentClick }: { path: string; isDark: boolean; onSegmentClick?: (segmentPath: string) => void }) {
@@ -375,136 +359,37 @@ function JsonNode({ data }: { data: NodePayload }) {
 
   const isArray = label.includes("[");
 
-  const borderColor =
-    highlight === "active" ? "#f59e0b"
-    : highlight === "selected" ? "#a78bfa"
-    : highlight === "focus" ? "#59b8ff"
-    : highlight === "match" ? "#34d058"
-    : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
-
-  const boxShadow =
-    highlight === "active"
-      ? "0 0 0 2px rgba(245, 158, 11, 0.4), 0 4px 12px rgba(0,0,0,0.15)"
-    : highlight === "selected"
-      ? "0 0 0 2px rgba(167, 139, 250, 0.4), 0 0 16px rgba(167, 139, 250, 0.1)"
-    : highlight === "focus"
-      ? "0 0 0 3px rgba(89, 184, 255, 0.4), 0 0 20px rgba(89, 184, 255, 0.12)"
-    : highlight === "match"
-      ? "0 0 0 2px rgba(52, 208, 88, 0.4), 0 0 16px rgba(52, 208, 88, 0.1)"
-    : isDark
-      ? "0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)"
-      : "0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)";
-
-  const bgColor =
-    highlight === "active" ? (isDark ? "#2e2a1e" : "#fffbeb")
-    : highlight === "selected" ? (isDark ? "#252030" : "#f5f3ff")
-    : highlight === "match" ? (isDark ? "#1a2e1e" : "#f0fdf4")
-    : isDark ? "#26262a" : "#ffffff";
-
   return (
-    <div
-      style={{
-        width: w,
-        height: h,
-        background: bgColor,
-        border: `${highlight === "match" || highlight === "active" ? "2px" : "1px"} solid ${borderColor}`,
-        borderRadius: 10,
-        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-        fontSize: 11.5,
-        overflow: "hidden",
-        boxShadow,
-        transition: "border-color 0.25s, box-shadow 0.25s",
-      }}
-    >
-      <Handle type="target" position={Position.Left} id="target" style={{
-        width: 10, height: 10,
-        background: isDark ? "#26262a" : "#fff",
-        border: `2px solid ${isDark ? "#555" : "#bbb"}`,
-        borderRadius: "50%",
-      }} />
-
-      {/* Header */}
-      <div
-        onClick={onHeaderClick}
-        style={{
-          height: HEADER_H,
-          padding: "0 12px",
-          display: "flex",
-          alignItems: "center",
-          cursor: "pointer",
-          background: isDark
-            ? "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
-            : "linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.04) 100%)",
-          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
-          color: isDark ? "#b0b0b8" : "#555",
-          fontWeight: 600,
-          fontSize: 11,
-          letterSpacing: 0.3,
-          borderRadius: "10px 10px 0 0",
-        }}
-      >
+    <DiagramNodeFrame highlight={highlight} style={{ width: w, height: h }}>
+      <DiagramHandle type="target" position={Position.Left} id="target" />
+      <DiagramNodeHeader onClick={onHeaderClick} style={{ height: HEADER_H, cursor: "pointer" }}>
         {hasParent && (
-          <span
-            onClick={(e) => { e.stopPropagation(); onParentClick?.(); }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(167,139,250,0.15)" : "rgba(167,139,250,0.1)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"; }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 18,
-              height: 18,
-              borderRadius: 4,
-              marginRight: 5,
-              cursor: "pointer",
-              background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-              transition: "background 0.15s",
-              flexShrink: 0,
-            }}
+          <DiagramNodeAction
             title="Go to parent"
+            aria-label="Go to parent"
+            onClick={(event) => { event.stopPropagation(); onParentClick?.(); }}
           >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={isDark ? "#a78bfa" : "#7c3aed"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 4L6 8L10 12" />
             </svg>
-          </span>
+          </DiagramNodeAction>
         )}
         <TypeBadge isArray={isArray} isDark={isDark} />
         <span style={{ opacity: 0.9, flex: 1 }}>{label.replace(/\s*\[\d+\]/, "")}</span>
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
-            copy(JSON.stringify(originalValue, null, 2), "__json__");
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(167,139,250,0.15)" : "rgba(167,139,250,0.1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"; }}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 18,
-            height: 18,
-            borderRadius: 4,
-            marginLeft: 4,
-            cursor: "pointer",
-            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-            transition: "background 0.15s",
-            flexShrink: 0,
-          }}
+        <DiagramNodeAction
           title="Copy as JSON"
+          aria-label="Copy as JSON"
+          onClick={(event) => { event.stopPropagation(); copy(JSON.stringify(originalValue, null, 2), "__json__"); }}
         >
-          {copiedKey === "__json__" ? (
-            <CopyCheck size={10} />
-          ) : (
-            <CopyIcon size={10} color={isDark ? "#a78bfa" : "#7c3aed"} />
-          )}
-        </span>
-      </div>
+          {copiedKey === "__json__" ? <CopyCheck size={10} /> : <CopyIcon size={10} color={isDark ? "#a78bfa" : "#7c3aed"} />}
+        </DiagramNodeAction>
+      </DiagramNodeHeader>
 
       {/* Rows */}
       {rows.map((row, i) => {
         const isChild = childKeys.includes(row.key ?? "");
         return (
-          <div
+          <DiagramNodeRow
             key={i}
             onClick={isChild && onRowClick ? () => onRowClick(row.key!) : undefined}
             style={{
@@ -513,7 +398,6 @@ function JsonNode({ data }: { data: NodePayload }) {
               display: "flex",
               alignItems: "center",
               justifyContent: row.key !== null ? "space-between" : "center",
-              borderBottom: i < rows.length - 1 ? `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` : "none",
               position: "relative",
               cursor: isChild ? "pointer" : "default",
               background: "transparent",
@@ -565,22 +449,12 @@ function JsonNode({ data }: { data: NodePayload }) {
             )}
 
             {isChild && (
-              <Handle
-                type="source"
-                position={Position.Right}
-                id={`src-${row.key}`}
-                style={{
-                  width: 10, height: 10,
-                  background: isDark ? "#26262a" : "#fff",
-                  border: `2px solid ${isDark ? "#59b8ff" : "#761CEA"}`,
-                  borderRadius: "50%",
-                }}
-              />
+              <DiagramHandle type="source" position={Position.Right} id={`src-${row.key}`} />
             )}
-          </div>
+          </DiagramNodeRow>
         );
       })}
-    </div>
+    </DiagramNodeFrame>
   );
 }
 
@@ -749,8 +623,7 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
           ...e,
           style: {
             ...e.style,
-            stroke: onPath ? "#a78bfa" : undefined,
-            strokeWidth: onPath ? 2.5 : undefined,
+            ...diagramEdgeStyle(onPath),
           },
           animated: onPath,
         };
@@ -762,7 +635,7 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
     setEdges((eds) =>
       eds.map((e) => ({
         ...e,
-        style: { ...e.style, stroke: undefined, strokeWidth: undefined },
+        style: { ...e.style, ...diagramEdgeStyle() },
         animated: false,
       })),
     );
@@ -890,7 +763,7 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
   }, []);
 
   return (
-    <div ref={containerRef} className="json-diagram h-full w-full relative" style={{ backgroundColor: isDark ? "#141414" : "#f7f7f7" }}>
+    <div ref={containerRef} className="json-diagram diagram-canvas h-full w-full relative" style={{ backgroundColor: isDark ? "#141414" : "#f7f7f7" }}>
       {/* Search */}
       {searchOpen && (
         <div className="absolute top-2 left-2 z-[10] flex items-center gap-1 rounded-lg border shadow-md px-1.5 py-1"
@@ -991,7 +864,7 @@ function JsonDiagramViewer({ data, theme }: { data: unknown; theme: "dark" | "li
         minZoom={0.05}
         maxZoom={3}
         proOptions={{ hideAttribution: true }}
-        defaultEdgeOptions={{ type: "smoothstep", style: { stroke: isDark ? "#444" : "#BCBEC0", strokeWidth: 1.5 } }}
+        defaultEdgeOptions={{ type: DIAGRAM_EDGE_TYPE, style: diagramEdgeStyle() }}
       >
         <Background color={isDark ? "#2a2a30" : "#e5e5ea"} gap={20} size={1} />
         <Controls

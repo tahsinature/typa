@@ -1,5 +1,7 @@
 import { memo, type CSSProperties } from "react";
-import { Handle, type Node, type NodeProps } from "@xyflow/react";
+import { type Node, type NodeProps } from "@xyflow/react";
+import { DiagramHandle, DiagramNodeFrame, DiagramNodeRow } from "@/components/diagram/DiagramNode";
+import { HierarchyDiagramHeader } from "./diagram-header";
 import { BOARD_ROW_INDENT } from "@typa/engine";
 import { TreeIcon } from "./icons";
 import { formatCount, type CardRow, type GroupCardData } from "./model";
@@ -8,35 +10,20 @@ export const GroupCard = memo(function GroupCard({ data, selected }: NodeProps<N
   const { entry, sections } = data;
   const group = !!entry && entry.children.length > 0;
   return (
-    <div
-      className={`ht-card ${entry ? "" : "ht-card-list"} ${selected ? "is-selected" : ""} ${data.match ? "is-match" : ""}`}
+    <DiagramNodeFrame
+      className="ht-card"
+      highlight={selected || data.selectedRowId ? "selected" : data.match ? "match" : "none"}
       style={{ "--branch-color": data.color } as CSSProperties}
     >
-      {data.targetPosition && <Handle type="target" position={data.targetPosition} isConnectable={false} />}
+      {data.targetPosition && <DiagramHandle type="target" position={data.targetPosition} />}
       {entry && (
-        <div className="ht-card-header">
-          <span className="ht-card-icon">
-            <TreeIcon name={group ? "tree" : "leaf"} width={14} height={14} />
-          </span>
-          <span className="ht-card-title" title={entry.name}>
-            {entry.name}
-          </span>
-          {(group || data.count !== 1) && <span className="ht-card-count">{formatCount(data.count)}</span>}
-          {group && (
-            <button
-              type="button"
-              className="ht-node-toggle ht-card-toggle nodrag nopan"
-              aria-label={`${data.collapsed ? "Expand" : "Collapse"} ${entry.name}`}
-              aria-expanded={!data.collapsed}
-              onClick={(event) => {
-                event.stopPropagation();
-                data.onToggle(entry.id);
-              }}
-            >
-              <TreeIcon name={data.collapsed ? "plus" : "minus"} width={11} height={11} />
-            </button>
-          )}
-        </div>
+        <HierarchyDiagramHeader
+          name={entry.name}
+          group={group}
+          count={group || data.count !== 1 ? data.count : undefined}
+          collapsed={data.collapsed}
+          onToggle={group ? () => data.onToggle(entry.id) : undefined}
+        />
       )}
       {sections.length > 0 && (
         <div className="ht-card-body">
@@ -60,7 +47,7 @@ export const GroupCard = memo(function GroupCard({ data, selected }: NodeProps<N
           ))}
         </div>
       )}
-    </div>
+    </DiagramNodeFrame>
   );
 });
 
@@ -77,7 +64,7 @@ function CardRowItem({ row, title = false, selected, onToggle, onSelect }: CardR
   const { entry } = row;
   const group = entry.children.length > 0;
   return (
-    <li
+    <DiagramNodeRow as="li"
       className={`ht-card-row nodrag ${title ? "ht-card-section-title" : ""} ${group ? "is-group" : ""} ${selected ? "is-selected" : ""} ${row.match ? "is-match" : ""}`}
       style={{ paddingLeft: 6 + row.indent * BOARD_ROW_INDENT }}
       onClick={(event) => {
@@ -107,6 +94,6 @@ function CardRowItem({ row, title = false, selected, onToggle, onSelect }: CardR
         {entry.name}
       </span>
       {(group || row.count !== 1) && <span className="ht-card-row-count">{formatCount(row.count)}</span>}
-    </li>
+    </DiagramNodeRow>
   );
 }
