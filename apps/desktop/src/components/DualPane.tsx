@@ -3,6 +3,7 @@ import { Allotment } from "allotment";
 import { getTransform, CATEGORY_META } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useEngineStore } from "@/stores/engineStore";
+import { JsonEmptyOutput } from "@/components/JsonEmptyOutput";
 import { CalculatorSheet } from "@/components/calculator/CalculatorSheet";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { FullscreenIcon, ExitFullscreenIcon, InfoIcon } from "@/components/Icons";
@@ -227,6 +228,7 @@ export function DualPane({ tabId }: { tabId: string }) {
   const inputCount = transform?.inputs ?? 1;
   const category = transform?.category ?? "Math";
   const accentColor = CATEGORY_META[category]?.color;
+  const isEmptyJsonInput = category === "JSON" && inputs.slice(0, inputCount).every((text) => !text.trim());
 
   // Resolve available views
   const inputViewIds = transform?.inputViews ?? ["raw-input"];
@@ -250,13 +252,13 @@ export function DualPane({ tabId }: { tabId: string }) {
   }, [selectedTransformId]);
 
   const parsedData = useMemo(() => {
-    if (!activeOutputView) return null;
+    if (!activeOutputView || isEmptyJsonInput) return null;
     try {
       return activeOutputView.parse(output, outputData);
     } catch {
       return null;
     }
-  }, [activeOutputView, output, outputData]);
+  }, [activeOutputView, output, outputData, isEmptyJsonInput]);
 
   const runTransform = useCallback(
     async (transformId: string, presetId: string | null, ...texts: string[]) => {
@@ -273,6 +275,11 @@ export function DualPane({ tabId }: { tabId: string }) {
       } else {
         const t = getTransform(transformId);
         if (!t) return;
+        if (t.category === "JSON" && texts.every((text) => !text.trim())) {
+          updateOutput(tabId, "");
+          updateExecTime(tabId, 0);
+          return;
+        }
         try {
           const args = t.presets && presetId ? [...texts, presetId] : texts;
           const result = await t.fn(...args);
@@ -304,7 +311,7 @@ export function DualPane({ tabId }: { tabId: string }) {
 
   const themeMode: "dark" | "light" = resolvedTheme === "dark" ? "dark" : "light";
   const hasInputPane = availableInputViews.length > 0;
-  const hasError = output.startsWith("Error: ");
+  const hasError = !isEmptyJsonInput && output.startsWith("Error: ");
 
   if (selectedTransformId === "calculator") {
     return (
@@ -398,7 +405,9 @@ export function DualPane({ tabId }: { tabId: string }) {
         </ToolbarGroup>
       </PaneHeader>
       <div className="flex-1 min-h-0 overflow-hidden">
-        {hasError ? (
+        {isEmptyJsonInput ? (
+          <JsonEmptyOutput />
+        ) : hasError ? (
           <TransformError message={output.slice(7)} />
         ) : activeOutputView && parsedData !== null ? (
           <TabIdContext.Provider value={tabId}>
