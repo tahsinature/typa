@@ -22,6 +22,7 @@ interface DocumentStore {
   rename: (id: string, name: string) => Promise<void>;
   reorder: (fromIndex: number, toIndex: number) => Promise<void>;
   loadAll: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 let store: Store | null = null;
@@ -41,20 +42,29 @@ function migrateDoc(raw: any): SavedDocument {
   return { ...raw, inputs, input: undefined, input2: undefined };
 }
 
+async function readDocuments(fromDisk = false): Promise<SavedDocument[]> {
+  const s = await getStore();
+  if (fromDisk) await s.reload();
+  const raw = ((await s.get('documents')) as any[] | null) ?? [];
+  return raw.map(migrateDoc).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
   documents: [],
   loaded: false,
 
   loadAll: async () => {
     try {
-      const s = await getStore();
-      const raw = ((await s.get('documents')) as any[] | null) ?? [];
-      const docs = raw.map(migrateDoc);
-      docs.sort((a, b) => b.updatedAt - a.updatedAt);
+      const docs = await readDocuments();
       set({ documents: docs, loaded: true });
     } catch {
       set({ loaded: true });
     }
+  },
+
+  refresh: async () => {
+    const documents = await readDocuments(true);
+    set({ documents, loaded: true });
   },
 
   save: async (tab) => {

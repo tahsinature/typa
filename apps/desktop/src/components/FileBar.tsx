@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDocumentStore, type SavedDocument } from '@/stores/documentStore';
 import { useTabStore } from '@/stores/tabStore';
-import { useSettingsStore } from '@/stores/settingsStore';
+import { FileBarHeader } from './FileBarHeader';
 import { getTransform, CATEGORY_META } from '@typa/engine';
 import {
   DndContext,
@@ -49,14 +49,11 @@ export function FileBar() {
   const documents = useDocumentStore((s) => s.documents);
   const loaded = useDocumentStore((s) => s.loaded);
   const removeDoc = useDocumentStore((s) => s.remove);
-  const removeAllDocs = useDocumentStore((s) => s.removeAll);
   const renameDoc = useDocumentStore((s) => s.rename);
   const reorderDocs = useDocumentStore((s) => s.reorder);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const tabs = useTabStore((s) => s.tabs);
   const activeTabId = useTabStore((s) => s.activeTabId);
   const setActiveTab = useTabStore((s) => s.setActiveTab);
-  const toggleSidebar = useSettingsStore((s) => s.toggleSidebar);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -93,53 +90,7 @@ export function FileBar() {
 
   return (
     <div className="h-full w-full flex flex-col bg-bg-surface/40 select-none">
-      {/* Header */}
-      <div className="flex items-center justify-between h-[32px] px-3 shrink-0 border-b border-border-subtle/50">
-        <span className="text-[10px] font-semibold text-text-muted tracking-[0.08em] uppercase">
-          Files
-        </span>
-        <div className="flex items-center gap-1">
-          {loaded && documents.length > 0 && (
-            <>
-              <span className="text-[10px] text-text-faint tabular-nums px-1.5 py-0.5 rounded-md bg-white/[0.04]">
-                {documents.length}
-              </span>
-              <button
-                onClick={() => {
-                  if (confirmDeleteAll) {
-                    removeAllDocs();
-                    setConfirmDeleteAll(false);
-                  } else {
-                    setConfirmDeleteAll(true);
-                    setTimeout(() => setConfirmDeleteAll(false), 2000);
-                  }
-                }}
-                onMouseLeave={() => setConfirmDeleteAll(false)}
-                className={`flex items-center justify-center size-[20px] rounded-md transition-all cursor-pointer ${
-                  confirmDeleteAll
-                    ? 'bg-danger/15 text-danger'
-                    : 'text-text-faint hover:text-text-muted hover:bg-white/[0.06]'
-                }`}
-                title={confirmDeleteAll ? 'Click again to delete all' : 'Delete all files'}
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                </svg>
-              </button>
-            </>
-          )}
-          <button
-            onClick={toggleSidebar}
-            className="flex items-center justify-center size-[20px] rounded-md text-text-faint hover:text-text-muted hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="Close sidebar ⌘B"
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M0 3a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H2a2 2 0 01-2-2V3zm5-1v12h9a1 1 0 001-1V3a1 1 0 00-1-1H5zM4 2H2a1 1 0 00-1 1v10a1 1 0 001 1h2V2z" />
-              <path d="M8.5 6l-2 2 2 2" fill="none" stroke="var(--bg-titlebar)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      <FileBarHeader />
 
       {/* File list */}
       <div className="flex-1 overflow-y-auto py-1">
