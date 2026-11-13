@@ -17,7 +17,9 @@ define_class!(
             if event.modifierFlags().contains(NSEventModifierFlags::Command)
                 && event.charactersIgnoringModifiers().is_some_and(|key| key.to_string() == "w")
             {
-                self.performClose(None);
+                if !crate::updater::snapshot().phase.is_installing() {
+                    self.performClose(None);
+                }
                 true
             } else {
                 // Preserve AppKit's normal handling for all other key equivalents.

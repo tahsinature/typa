@@ -1,15 +1,16 @@
-use super::views;
+use super::{updates::UpdatePane, views};
 use crate::preferences_settings::{self, Preferences};
 use objc2::{
     define_class, msg_send, rc::Retained, runtime::ProtocolObject, sel, DefinedClass,
     MainThreadMarker, MainThreadOnly,
 };
 use objc2_app_kit::{
-    NSAppearance, NSAppearanceCustomization, NSButton, NSImage, NSPopUpButton, NSToolbar,
-    NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarItem,
-    NSWindow, NSWindowCollectionBehavior, NSWindowTabbingMode, NSWindowToolbarStyle,
+    NSAppearance, NSAppearanceCustomization, NSButton, NSImage, NSPasteboard,
+    NSPasteboardTypeString, NSPopUpButton, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode,
+    NSToolbarFlexibleSpaceItemIdentifier, NSToolbarItem, NSWindow, NSWindowButton,
+    NSWindowCollectionBehavior, NSWindowTabbingMode, NSWindowToolbarStyle, NSWorkspace,
 };
-use objc2_foundation::{NSArray, NSCopying, NSObject, NSObjectProtocol, NSSize, NSString};
+use objc2_foundation::{NSArray, NSCopying, NSObject, NSObjectProtocol, NSSize, NSString, NSURL};
 use std::cell::{Cell, RefCell};
 use tauri::AppHandle;
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -22,12 +23,14 @@ pub struct ControllerState {
     app: AppHandle,
     window: Retained<NSWindow>,
     pane: Cell<usize>,
+    updates: RefCell<Option<UpdatePane>>,
 }
 
-const PANES: [(&str, &str); 3] = [
+const PANES: [(&str, &str); 4] = [
     ("General", "gearshape"),
     ("Appearance", "paintpalette"),
     ("Shortcuts", "keyboard"),
+    ("Updates", "arrow.triangle.2.circlepath"),
 ];
 
 fn identifiers() -> Retained<NSArray<NSString>> {
@@ -72,6 +75,30 @@ define_class!(
     }
 
     impl PreferencesController {
+        #[unsafe(method(updateAction:))]
+        fn update_action(&self, _: &NSButton) {
+            if crate::updater::snapshot().phase == crate::updater::Phase::Unconfigured {
+                if let Some(url) = NSURL::URLWithString(&NSString::from_str("https://github.com/tahsinature/typa/releases/latest")) {
+                    NSWorkspace::sharedWorkspace().openURL(&url);
+                }
+            } else {
+                crate::updater::advance(self.ivars().app.clone());
+            }
+        }
+
+        #[unsafe(method(copyUpdateError:))]
+        fn copy_update_error(&self, sender: &NSButton) {
+            let state = crate::updater::snapshot();
+            if let Some(error) = state.error {
+                let details = format!("Typa {}\nUpdate status: {:?}\n{}", self.ivars().app.package_info().version, state.phase, error);
+                let pasteboard = NSPasteboard::generalPasteboard();
+                pasteboard.clearContents();
+                if pasteboard.setString_forType(&NSString::from_str(&details), unsafe { NSPasteboardTypeString }) {
+                    sender.setTitle(&NSString::from_str("Copied"));
+                }
+            }
+        }
+
         #[unsafe(method(selectPane:))]
         fn select_pane(&self, sender: &NSToolbarItem) {
             self.ivars().pane.set(sender.tag() as usize);
@@ -161,11 +188,37 @@ impl PreferencesController {
         self.ivars().window.setAppearance(appearance.as_deref());
     }
 
+    fn refresh_updates(&self) {
+        let state = crate::updater::snapshot();
+        if let Some(close) = self
+            .ivars()
+            .window
+            .standardWindowButton(NSWindowButton::CloseButton)
+        {
+            close.setEnabled(!state.phase.is_installing());
+        }
+        if self.ivars().pane.get() == 3 {
+            if let Some(pane) = self.ivars().updates.borrow().as_ref() {
+                pane.update(&state);
+            }
+        }
+    }
+
     fn render(&self) {
         let settings = self.settings();
         self.apply_appearance(&settings);
-        let view = views::pane(self, self.ivars().pane.get(), &settings);
-        self.ivars().window.setContentView(Some(&view));
+        if self.ivars().pane.get() == 3 {
+            let mut updates = self.ivars().updates.borrow_mut();
+            let pane = updates.get_or_insert_with(|| {
+                UpdatePane::new(self, &self.ivars().app.package_info().version.to_string())
+            });
+            pane.update(&crate::updater::snapshot());
+            self.ivars().window.setContentView(Some(&pane.view));
+        } else {
+            let view = views::pane(self, self.ivars().pane.get(), &settings);
+            self.ivars().window.setContentView(Some(&view));
+        }
+        self.refresh_updates();
     }
 }
 
@@ -185,6 +238,7 @@ pub fn open(app: AppHandle) {
                 app,
                 window: window.clone(),
                 pane: Cell::new(0),
+                updates: RefCell::new(None),
             });
             let controller: Retained<PreferencesController> =
                 unsafe { msg_send![super(controller), init] };
@@ -213,6 +267,14 @@ pub fn refresh() {
     CONTROLLER.with(|slot| {
         if let Some(controller) = slot.borrow().as_ref() {
             controller.render();
+        }
+    });
+}
+
+pub fn refresh_updates() {
+    CONTROLLER.with(|slot| {
+        if let Some(controller) = slot.borrow().as_ref() {
+            controller.refresh_updates();
         }
     });
 }

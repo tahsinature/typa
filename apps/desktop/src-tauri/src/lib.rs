@@ -8,7 +8,6 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
-mod install_feedback;
 mod open_with;
 mod process_manager;
 mod preferences;
@@ -461,9 +460,6 @@ pub fn run() {
                 .accelerator("CmdOrCtrl+N")
                 .build(app)?;
 
-            let check_updates = MenuItemBuilder::new("Check for Updates…")
-                .id("check_updates")
-                .build(app)?;
             let preferences = MenuItemBuilder::new("Preferences…")
                 .id("preferences")
                 .accelerator("CmdOrCtrl+,")
@@ -471,8 +467,6 @@ pub fn run() {
             let app_menu = SubmenuBuilder::new(app, "Typa")
                 .about(None)
                 .item(&preferences)
-                .separator()
-                .item(&check_updates)
                 .separator()
                 .services()
                 .separator()
@@ -509,13 +503,11 @@ pub fn run() {
                     }
                 } else if event.id() == new_window.id() {
                     open_new_window(app);
-                } else if event.id() == check_updates.id() {
-                    updater::check(app.clone(), true);
                 }
             });
 
             if !cfg!(debug_assertions) {
-                updater::check(app.handle().clone(), false);
+                updater::check(app.handle().clone());
             }
 
             Ok(())
