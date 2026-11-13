@@ -1,3 +1,4 @@
+import { textEmptyState } from './empty-states';
 import { registerTransform } from './registry';
 
 function splitWords(input: string): string[] {
@@ -13,6 +14,7 @@ function splitWords(input: string): string[] {
 
 registerTransform({
   id: 'sort-lines-asc',
+  emptyState: textEmptyState,
   name: 'Sort Lines (A-Z)',
   description: 'Sort lines alphabetically ascending',
   category: 'Formatting',
@@ -27,6 +29,7 @@ registerTransform({
 
 registerTransform({
   id: 'sort-lines-desc',
+  emptyState: textEmptyState,
   name: 'Sort Lines (Z-A)',
   description: 'Sort lines alphabetically descending',
   category: 'Formatting',
@@ -41,6 +44,7 @@ registerTransform({
 
 registerTransform({
   id: 'reverse-lines',
+  emptyState: textEmptyState,
   name: 'Reverse Lines',
   description: 'Reverse the order of lines',
   category: 'Formatting',
@@ -51,6 +55,7 @@ registerTransform({
 
 registerTransform({
   id: 'unique-lines',
+  emptyState: textEmptyState,
   name: 'Unique Lines',
   description: 'Remove duplicate lines',
   category: 'Formatting',
@@ -61,6 +66,7 @@ registerTransform({
 
 registerTransform({
   id: 'trim-lines',
+  emptyState: textEmptyState,
   name: 'Trim Lines',
   description: 'Trim whitespace from each line',
   category: 'Formatting',
@@ -75,6 +81,7 @@ registerTransform({
 
 registerTransform({
   id: 'remove-empty-lines',
+  emptyState: textEmptyState,
   name: 'Remove Empty Lines',
   description: 'Remove all blank lines',
   category: 'Formatting',
@@ -101,6 +108,7 @@ registerTransform({
 
 registerTransform({
   id: 'uppercase',
+  emptyState: textEmptyState,
   name: 'UPPERCASE',
   description: 'Convert all text to uppercase',
   category: 'Formatting',
@@ -111,6 +119,7 @@ registerTransform({
 
 registerTransform({
   id: 'lowercase',
+  emptyState: textEmptyState,
   name: 'lowercase',
   description: 'Convert all text to lowercase',
   category: 'Formatting',
@@ -121,6 +130,7 @@ registerTransform({
 
 registerTransform({
   id: 'title-case',
+  emptyState: textEmptyState,
   name: 'Title Case',
   description: 'Capitalize the first letter of each word',
   category: 'Formatting',
@@ -135,6 +145,7 @@ registerTransform({
 
 registerTransform({
   id: 'camel-case',
+  emptyState: textEmptyState,
   name: 'camelCase',
   description: 'Convert to camelCase',
   category: 'Formatting',
@@ -158,6 +169,7 @@ registerTransform({
 
 registerTransform({
   id: 'pascal-case',
+  emptyState: textEmptyState,
   name: 'PascalCase',
   description: 'Convert to PascalCase',
   category: 'Formatting',
@@ -176,6 +188,7 @@ registerTransform({
 
 registerTransform({
   id: 'snake-case',
+  emptyState: textEmptyState,
   name: 'snake_case',
   description: 'Convert to snake_case',
   category: 'Formatting',
@@ -194,6 +207,7 @@ registerTransform({
 
 registerTransform({
   id: 'kebab-case',
+  emptyState: textEmptyState,
   name: 'kebab-case',
   description: 'Convert to kebab-case',
   category: 'Formatting',

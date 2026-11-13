@@ -1,7 +1,9 @@
+import { jsonEmptyState } from './empty-states';
 import { registerTransform } from './registry';
 
 registerTransform({
   id: 'jwt-decode',
+  emptyState: { title: 'Ready for a token', description: 'Paste a JWT on the left to inspect its header and payload.', symbol: '{ }', trimWhitespace: true },
   name: 'JWT Decode',
   description: 'Decode a JWT token (header + payload)',
   category: 'Web',
@@ -24,6 +26,7 @@ registerTransform({
 
 registerTransform({
   id: 'querystring-to-json',
+  emptyState: { title: 'Ready for a query string', description: 'Paste URL parameters such as name=Alex&count=2 to see them as JSON.', symbol: '?', trimWhitespace: true },
   name: 'Query String to JSON',
   description: 'Parse URL query string into JSON',
   category: 'Web',
@@ -42,6 +45,7 @@ registerTransform({
 
 registerTransform({
   id: 'json-to-querystring',
+  emptyState: jsonEmptyState,
   name: 'JSON to Query String',
   description: 'Convert JSON object to URL query string',
   category: 'Web',
@@ -69,6 +73,7 @@ registerTransform({
 
 registerTransform({
   id: 'timestamp-to-date',
+  emptyState: { title: 'Ready for a timestamp', description: 'Enter a Unix timestamp on the left to convert it to a date.', symbol: '01', trimWhitespace: true },
   name: 'Unix Timestamp to Date',
   description: 'Convert Unix timestamp to ISO date string',
   category: 'Web',
@@ -84,6 +89,7 @@ registerTransform({
 
 registerTransform({
   id: 'date-to-timestamp',
+  emptyState: { title: 'Ready for a date', description: 'Enter a date on the left or choose one with the date picker.', symbol: '01', trimWhitespace: true },
   name: 'Date to Unix Timestamp',
   description: 'Convert date string to Unix timestamp (seconds)',
   category: 'Web',

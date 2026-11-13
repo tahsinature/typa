@@ -51,6 +51,7 @@ function parseMarkdownTable(input: string): Record<string, string | number>[] {
 
 registerTransform({
   id: 'markdown-table',
+  emptyState: { title: 'Ready for a table', description: 'Paste a Markdown table on the left to see it rendered.', symbol: '| |', trimWhitespace: true },
   name: 'Markdown Table',
   description: 'Parse and render a markdown table',
   category: 'Formatting',

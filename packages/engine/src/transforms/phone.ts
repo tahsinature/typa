@@ -127,6 +127,7 @@ function isPresetKey(s: string | undefined): s is keyof PhoneFormats {
 
 registerTransform({
   id: 'phone-format',
+  emptyState: { title: 'Ready for phone numbers', description: 'Enter one phone number per line to format it.', symbol: '+', trimWhitespace: true },
   name: 'Phone Format',
   description:
     'Format phone numbers — pick a preset (E.164, International, National, Digits only).',

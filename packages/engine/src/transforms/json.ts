@@ -1,3 +1,4 @@
+import { jsonEmptyState } from './empty-states';
 import { registerTransform } from './registry';
 import type { NodeNameConfig, NodeStatusConfig } from '../types';
 
@@ -5,6 +6,7 @@ const jsonOutputViews = ['raw-output', 'json-tree', 'json-diagram', 'table'];
 
 registerTransform({
   id: 'json-format',
+  emptyState: jsonEmptyState,
   name: 'Format JSON',
   description: 'Pretty-print JSON with 2-space indentation',
   category: 'JSON',
@@ -15,6 +17,7 @@ registerTransform({
 
 registerTransform({
   id: 'json-minify',
+  emptyState: jsonEmptyState,
   name: 'Minify JSON',
   description: 'Remove all whitespace from JSON',
   category: 'JSON',
@@ -124,6 +127,7 @@ function isTypeDefinition(input: string): boolean {
 
 registerTransform({
   id: 'js-to-json',
+  emptyState: jsonEmptyState,
   name: 'JS/TS to JSON',
   description: 'Convert JS object literals or TypeScript interfaces to JSON',
   category: 'JSON',
@@ -142,6 +146,7 @@ registerTransform({
 
 registerTransform({
   id: 'json-normalize',
+  emptyState: jsonEmptyState,
   name: 'Normalize JSON',
   description: 'Unescape a stringified JSON (literal \\n, \\t, \\/, etc.) and pretty-print it',
   category: 'JSON',
@@ -366,6 +371,7 @@ type MultiJsonNode = {
 
 registerTransform({
   id: 'json-multi-view',
+  emptyState: jsonEmptyState,
   name: 'Multi JSON / NDJSON Viewer',
   description: 'View multiple JSON nodes (NDJSON, paste formatted or minified JSON values)',
   category: 'JSON',
@@ -451,6 +457,7 @@ registerTransform({
 
 registerTransform({
   id: 'json-validate',
+  emptyState: jsonEmptyState,
   name: 'Validate JSON',
   description: 'Check if input is valid JSON',
   category: 'JSON',

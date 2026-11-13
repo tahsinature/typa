@@ -82,6 +82,14 @@ export interface NodeNameConfig {
 // without having to re-parse `text`.
 export type TransformResult = string | { text: string; data: unknown };
 
+export interface TransformEmptyState {
+  title: string;
+  description: string;
+  symbol: string;
+  // Enable only when whitespace is not meaningful input for this tool.
+  trimWhitespace?: boolean;
+}
+
 export interface Transform {
   id: string;
   name: string;
@@ -98,6 +106,8 @@ export interface Transform {
   nodeStatus?: NodeStatusConfig;
   // Opt into per-node renaming in the multi-JSON viewer (writes back to input).
   nodeName?: NodeNameConfig;
+  // Optional initial UI state. The transform function keeps its normal semantics.
+  emptyState?: TransformEmptyState;
   fn: (...inputs: string[]) => TransformResult | Promise<TransformResult>;
   inputViews: string[];
   outputViews: string[];

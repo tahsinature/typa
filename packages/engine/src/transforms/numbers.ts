@@ -1,3 +1,4 @@
+import { numberEmptyState } from './empty-states';
 import { registerTransform } from './registry';
 
 function mapLines(
@@ -16,6 +17,7 @@ function mapLines(
 
 registerTransform({
   id: 'hex-to-decimal',
+  emptyState: numberEmptyState,
   name: 'Hex to Decimal',
   description: 'Convert hexadecimal numbers to decimal',
   category: 'Numbers',
@@ -30,6 +32,7 @@ registerTransform({
 
 registerTransform({
   id: 'decimal-to-hex',
+  emptyState: numberEmptyState,
   name: 'Decimal to Hex',
   description: 'Convert decimal numbers to hexadecimal',
   category: 'Numbers',
@@ -44,6 +47,7 @@ registerTransform({
 
 registerTransform({
   id: 'decimal-to-binary',
+  emptyState: numberEmptyState,
   name: 'Decimal to Binary',
   description: 'Convert decimal numbers to binary',
   category: 'Numbers',
@@ -58,6 +62,7 @@ registerTransform({
 
 registerTransform({
   id: 'binary-to-decimal',
+  emptyState: numberEmptyState,
   name: 'Binary to Decimal',
   description: 'Convert binary numbers to decimal',
   category: 'Numbers',
@@ -72,6 +77,7 @@ registerTransform({
 
 registerTransform({
   id: 'decimal-to-octal',
+  emptyState: numberEmptyState,
   name: 'Decimal to Octal',
   description: 'Convert decimal numbers to octal',
   category: 'Numbers',
@@ -86,6 +92,7 @@ registerTransform({
 
 registerTransform({
   id: 'octal-to-decimal',
+  emptyState: numberEmptyState,
   name: 'Octal to Decimal',
   description: 'Convert octal numbers to decimal',
   category: 'Numbers',
@@ -100,6 +107,7 @@ registerTransform({
 
 registerTransform({
   id: 'hex-to-rgb',
+  emptyState: { title: 'Ready for a hex color', description: 'Enter a hex color such as #ff5733 to convert it to RGB.', symbol: '#', trimWhitespace: true },
   name: 'Hex Color to RGB',
   description: 'Convert hex color (#ff5733) to rgb()',
   category: 'Numbers',
@@ -116,6 +124,7 @@ registerTransform({
 
 registerTransform({
   id: 'rgb-to-hex',
+  emptyState: { title: 'Ready for an RGB color', description: 'Enter a color such as rgb(255, 87, 51) to convert it to hex.', symbol: '#', trimWhitespace: true },
   name: 'RGB to Hex Color',
   description: 'Convert rgb(r, g, b) to hex color',
   category: 'Numbers',

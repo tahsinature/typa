@@ -1,7 +1,9 @@
+import { textEmptyState } from './empty-states';
 import { registerTransform } from './registry';
 
 registerTransform({
   id: 'base64-encode',
+  emptyState: textEmptyState,
   name: 'Base64 Encode',
   description: 'Encode text to Base64',
   category: 'Encoding',
@@ -12,6 +14,7 @@ registerTransform({
 
 registerTransform({
   id: 'base64-decode',
+  emptyState: { title: 'Ready for Base64', description: 'Paste Base64 on the left to decode it.', symbol: '64', trimWhitespace: true },
   name: 'Base64 Decode',
   description: 'Decode Base64 to text',
   category: 'Encoding',
@@ -22,6 +25,7 @@ registerTransform({
 
 registerTransform({
   id: 'url-encode',
+  emptyState: textEmptyState,
   name: 'URL Encode',
   description: 'Percent-encode text for URLs',
   category: 'Encoding',
@@ -32,6 +36,7 @@ registerTransform({
 
 registerTransform({
   id: 'url-decode',
+  emptyState: { title: 'Ready for URL-encoded text', description: 'Paste URL-encoded text on the left to decode it.', symbol: '%' },
   name: 'URL Decode',
   description: 'Decode percent-encoded text',
   category: 'Encoding',
@@ -42,6 +47,7 @@ registerTransform({
 
 registerTransform({
   id: 'html-encode',
+  emptyState: textEmptyState,
   name: 'HTML Entity Encode',
   description: 'Encode special characters as HTML entities',
   category: 'Encoding',
@@ -58,6 +64,7 @@ registerTransform({
 
 registerTransform({
   id: 'html-decode',
+  emptyState: { title: 'Ready for HTML entities', description: 'Paste text containing HTML entities on the left to decode it.', symbol: '< >' },
   name: 'HTML Entity Decode',
   description: 'Decode HTML entities to characters',
   category: 'Encoding',
@@ -76,6 +83,7 @@ registerTransform({
 
 registerTransform({
   id: 'unicode-escape',
+  emptyState: textEmptyState,
   name: 'Unicode Escape',
   description: 'Convert text to \\uXXXX escape sequences',
   category: 'Encoding',
@@ -92,6 +100,7 @@ registerTransform({
 
 registerTransform({
   id: 'unicode-unescape',
+  emptyState: { title: 'Ready for Unicode escapes', description: 'Paste text containing Unicode escapes on the left to decode it.', symbol: 'U+' },
   name: 'Unicode Unescape',
   description: 'Convert \\uXXXX sequences back to characters',
   category: 'Encoding',

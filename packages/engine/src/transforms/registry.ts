@@ -29,3 +29,10 @@ export function getCategories(): import('../types').TransformCategory[] {
   const cats = new Set(getAllTransforms().map((t) => t.category));
   return Array.from(cats).sort();
 }
+
+export function getTransformEmptyState(transform: Transform | undefined, inputs: readonly string[]) {
+  const state = transform?.emptyState;
+  if (!state) return undefined;
+  const isEmpty = inputs.every((input) => state.trimWhitespace ? !input.trim() : input.length === 0);
+  return isEmpty ? state : undefined;
+}
