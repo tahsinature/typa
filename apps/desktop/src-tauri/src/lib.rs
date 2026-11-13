@@ -8,8 +8,11 @@ use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
+mod install_feedback;
 mod open_with;
 mod process_manager;
+mod preferences;
+mod preferences_settings;
 mod updater;
 
 /* ── Existing commands ── */
@@ -428,7 +431,7 @@ fn open_new_window(app: &tauri::AppHandle) {
     if let Some(focused) = app
         .webview_windows()
         .values()
-        .find(|w| w.is_focused().unwrap_or(false))
+        .find(|w| w.label() != "preferences" && w.is_focused().unwrap_or(false))
     {
         if let Ok(pos) = focused.outer_position() {
             builder = builder.position((pos.x + 32) as f64, (pos.y + 32) as f64);
@@ -461,8 +464,14 @@ pub fn run() {
             let check_updates = MenuItemBuilder::new("Check for Updates…")
                 .id("check_updates")
                 .build(app)?;
+            let preferences = MenuItemBuilder::new("Preferences…")
+                .id("preferences")
+                .accelerator("CmdOrCtrl+,")
+                .build(app)?;
             let app_menu = SubmenuBuilder::new(app, "Typa")
                 .about(None)
+                .item(&preferences)
+                .separator()
                 .item(&check_updates)
                 .separator()
                 .services()
@@ -494,7 +503,11 @@ pub fn run() {
             app.set_menu(menu)?;
 
             app.on_menu_event(move |app, event| {
-                if event.id() == new_window.id() {
+                if event.id() == preferences.id() {
+                    if let Err(error) = preferences::open_preferences(app.clone()) {
+                        eprintln!("failed to open preferences: {error}");
+                    }
+                } else if event.id() == new_window.id() {
                     open_new_window(app);
                 } else if event.id() == check_updates.id() {
                     updater::check(app.clone(), true);
@@ -508,6 +521,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            preferences::open_preferences,
+            preferences_settings::load_preferences,
+            preferences_settings::save_preferences,
             copy_image_to_clipboard,
             read_image_from_clipboard,
             save_png_file,

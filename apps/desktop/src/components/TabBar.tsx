@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { openPreferences } from '@/lib/preferences';
 import { useTabStore } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -244,6 +245,9 @@ export function TabBar() {
           <KeyboardIcon />
         </Tb>
 
+        <Tb onClick={openPreferences} tip="Preferences ⌘,">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 7h16M4 17h16"/><rect x="8" y="4" width="4" height="6" rx="1" fill="var(--bg-titlebar)"/><rect x="14" y="14" width="4" height="6" rx="1" fill="var(--bg-titlebar)"/></svg>
+        </Tb>
         <ToolbarSep />
 
         <DropdownMenu>

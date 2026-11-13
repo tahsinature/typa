@@ -110,7 +110,13 @@ async fn check_and_install(app: &AppHandle, manual: bool) -> Result<(), String> 
         .await
         .map_err(|error| error.to_string())?;
     if accepted {
-        if let Err(error) = update.install(bytes) {
+        crate::install_feedback::show(app)?;
+        let result = tauri::async_runtime::spawn_blocking(move || update.install(bytes))
+            .await
+            .map_err(|error| error.to_string())
+            .and_then(|result| result.map_err(|error| error.to_string()));
+        if let Err(error) = result {
+            crate::install_feedback::dismiss(app);
             eprintln!("update install failed: {error}");
             show_install_error(app, "The update could not be installed. Move Typa to Applications and try again, or download the latest release manually.");
             return Ok(());

@@ -113,3 +113,13 @@ window
       useSettingsStore.setState({ resolvedTheme: resolved });
     }
   });
+
+// Webviews share storage, but Zustand instances need to rehydrate explicitly.
+window.addEventListener('storage', (event) => {
+  if (event.key === 'typa:settings' || event.key === null) {
+    void useSettingsStore.persist.rehydrate();
+  }
+});
+window.addEventListener('focus', () => {
+  void useSettingsStore.persist.rehydrate();
+});

@@ -1,42 +1,7 @@
 import { useEffect } from 'react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 
-const SHORTCUT_GROUPS = [
-  {
-    label: 'Tabs',
-    shortcuts: [
-      { keys: '⌘ T', action: 'New tab' },
-      { keys: '⌘ W', action: 'Close tab' },
-      { keys: '⌘ 1-9', action: 'Switch to tab' },
-      { keys: '⌘ ⇧ [', action: 'Previous tab' },
-      { keys: '⌘ ⇧ ]', action: 'Next tab' },
-    ],
-  },
-  {
-    label: 'View',
-    shortcuts: [
-      { keys: '⌘ B', action: 'Toggle sidebar' },
-      { keys: '⌘ L', action: 'Toggle layout' },
-      { keys: '⌘ ⇧ ⏎', action: 'Toggle fullscreen' },
-    ],
-  },
-  {
-    label: 'Zoom',
-    shortcuts: [
-      { keys: '⌘ +', action: 'Zoom in' },
-      { keys: '⌘ -', action: 'Zoom out' },
-      { keys: '⌘ 0', action: 'Reset zoom' },
-    ],
-  },
-  {
-    label: 'Actions',
-    shortcuts: [
-      { keys: '⌘ K', action: 'Command palette' },
-      { keys: '⌘ S', action: 'Save file' },
-      { keys: '⌘ /', action: 'Keyboard shortcuts' },
-    ],
-  },
-];
+import { SHORTCUT_GROUPS } from '@/lib/shortcuts';
 
 export function ShortcutsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {

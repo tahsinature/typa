@@ -1,3 +1,4 @@
+import { openPreferences } from '@/lib/preferences';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useTabStore } from '@/stores/tabStore';
 import { useDocumentStore } from '@/stores/documentStore';
@@ -77,6 +78,11 @@ export function App() {
         const idx = tabs.findIndex((t) => t.id === activeTabId);
         const next = (idx + 1) % tabs.length;
         setActiveTab(tabs[next].id);
+      }
+
+      if (mod && e.key === ',') {
+        e.preventDefault();
+        openPreferences();
       }
 
       // Sidebar: ⌘B toggle
