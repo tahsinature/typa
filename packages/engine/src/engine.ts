@@ -48,7 +48,7 @@ export class TypaEngine {
       sum = convert(sum, [this.calculator.findUnit('USD')!]);
     }
     if (!sum) return { sum: null, average: null, count: 0 };
-    return { sum: formatValue(sum), average: formatValue(divide(sum, num(count))), count };
+    return { sum: formatValue(sum), average: formatValue(divide(sum, num(count)), 2), count };
   }
 
   /** Units, currencies, functions, keywords and the variables of the last evaluated document. */

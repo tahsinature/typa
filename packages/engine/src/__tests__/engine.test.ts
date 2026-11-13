@@ -393,4 +393,26 @@ describe('Numi-style calculator', () => {
     engine.evaluateDocument('$10\n$20\nhello\n$30');
     expect(engine.summarize([1, 2, 3, 4])).toEqual({ sum: '$60.00', average: '$20.00', count: 3 });
   });
+
+  it('rounds summary averages without changing expression results or totals', () => {
+    engine.evaluateDocument('180\n180+280\n300\n250\n550\n3325');
+    expect(engine.summarize()).toEqual({ sum: '5,065', average: '844.17', count: 6 });
+    expect(engine.summarize([1, 2]).average).toBe('320');
+
+    const results = engine.evaluateDocument('1/3\n2/3');
+    expect(results[0].result).toBe('0.3333333333');
+    expect(engine.summarize()).toEqual({ sum: '1', average: '0.5', count: 2 });
+  });
+
+  it.each([
+    ['0.00123456', '0.00123'],
+    ['-0.00123456', '-0.00123'],
+    ['0.000000000123456', '0.000000000123'],
+    ['0.00000000000123456', '1.23e-12'],
+    ['0', '0'],
+    ['1 m / 3', '0.33 m'],
+  ])('keeps summary average %s readable as %s', (input, expected) => {
+    engine.evaluateDocument(input);
+    expect(engine.summarize().average).toBe(expected);
+  });
 });

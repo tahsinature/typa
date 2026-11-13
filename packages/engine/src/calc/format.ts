@@ -5,13 +5,20 @@ import { type DateValue, type Quantity, type UnitTerm, type Value, displayValue 
 const SUPERSCRIPTS: Record<string, string> = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
 
 /** 12 significant digits with en-US grouping; exponent form for extreme magnitudes. */
-export function formatNumber(n: number): string {
+export function formatNumber(n: number, maximumFractionDigits?: number): string {
   if (Number.isNaN(n)) return 'NaN';
   if (!Number.isFinite(n)) return n > 0 ? '∞' : '-∞';
   const rounded = parseFloat(n.toPrecision(12));
   const abs = Math.abs(rounded);
+  // Compact summaries still need meaningful digits for values below 0.01.
+  if (maximumFractionDigits !== undefined && abs > 0 && abs < 10 ** -maximumFractionDigits) {
+    const small = Number(rounded.toPrecision(3));
+    return Math.abs(small) < 1e-10
+      ? formatScientific(small)
+      : small.toLocaleString('en-US', { maximumSignificantDigits: 3 });
+  }
   if (abs >= 1e21 || (abs !== 0 && abs < 1e-10)) return formatScientific(rounded);
-  return rounded.toLocaleString('en-US', { maximumFractionDigits: 10 });
+  return rounded.toLocaleString('en-US', { maximumFractionDigits: maximumFractionDigits ?? 10 });
 }
 
 function formatScientific(n: number): string {
@@ -53,7 +60,7 @@ export function formatUnits(units: UnitTerm[]): string {
   return `${numerator}/${bottom.length > 1 ? `(${bottom.join('·')})` : bottom[0]}`;
 }
 
-function formatQuantity(q: Quantity): string {
+function formatQuantity(q: Quantity, maximumFractionDigits?: number): string {
   const n = displayValue(q);
   let digits: string;
   switch (q.format) {
@@ -64,7 +71,7 @@ function formatQuantity(q: Quantity): string {
     default: {
       const isMoney = q.units.length === 1 && q.units[0].power === 1 && sameDims(q.units[0].unit.dims, CURRENCY);
       if (isMoney) return formatCurrency(n, q.units[0].unit.symbol);
-      digits = formatNumber(n);
+      digits = formatNumber(n, maximumFractionDigits);
     }
   }
   if (!q.units.length) return digits;
@@ -83,10 +90,10 @@ function formatDate(d: DateValue): string {
   return `${day}, ${hours % 12 || 12}:${pad(date.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
 }
 
-export function formatValue(v: Value): string {
+export function formatValue(v: Value, maximumFractionDigits?: number): string {
   switch (v.kind) {
-    case 'percent': return `${formatNumber(v.ratio * 100)}%`;
+    case 'percent': return `${formatNumber(v.ratio * 100, maximumFractionDigits)}%`;
     case 'date': return formatDate(v);
-    case 'quantity': return formatQuantity(v);
+    case 'quantity': return formatQuantity(v, maximumFractionDigits);
   }
 }
