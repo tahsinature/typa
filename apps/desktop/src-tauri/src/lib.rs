@@ -471,10 +471,21 @@ pub fn run() {
 
             let file_menu = SubmenuBuilder::new(app, "File").item(&new_window).build()?;
 
+            // Native edit actions route clipboard shortcuts to the focused webview on macOS.
+            let edit_menu = SubmenuBuilder::new(app, "Edit")
+                .undo()
+                .redo()
+                .separator()
+                .cut()
+                .copy()
+                .paste()
+                .select_all()
+                .build()?;
+
             let window_menu = SubmenuBuilder::new(app, "Window").minimize().build()?;
 
             let menu = MenuBuilder::new(app)
-                .items(&[&app_menu, &file_menu, &window_menu])
+                .items(&[&app_menu, &file_menu, &edit_menu, &window_menu])
                 .build()?;
             app.set_menu(menu)?;
 
