@@ -26,11 +26,14 @@ pub struct ControllerState {
     updates: RefCell<Option<UpdatePane>>,
 }
 
-const PANES: [(&str, &str); 4] = [
+const ABOUT_PANE: usize = 4;
+
+const PANES: [(&str, &str); 5] = [
     ("General", "gearshape"),
     ("Appearance", "paintpalette"),
     ("Shortcuts", "keyboard"),
     ("Updates", "arrow.triangle.2.circlepath"),
+    ("About", "info.circle"),
 ];
 
 fn identifiers() -> Retained<NSArray<NSString>> {
@@ -214,6 +217,12 @@ impl PreferencesController {
             });
             pane.update(&crate::updater::snapshot());
             self.ivars().window.setContentView(Some(&pane.view));
+        } else if self.ivars().pane.get() == ABOUT_PANE {
+            let view = super::about::pane(
+                self.mtm(),
+                &self.ivars().app.package_info().version.to_string(),
+            );
+            self.ivars().window.setContentView(Some(&view));
         } else {
             let view = views::pane(self, self.ivars().pane.get(), &settings);
             self.ivars().window.setContentView(Some(&view));
@@ -222,7 +231,7 @@ impl PreferencesController {
     }
 }
 
-pub fn open(app: AppHandle) {
+pub fn open(app: AppHandle, show_about: bool) {
     CONTROLLER.with(|slot| {
         let mut slot = slot.borrow_mut();
         if slot.is_none() {
@@ -257,6 +266,12 @@ pub fn open(app: AppHandle) {
             *slot = Some(controller);
         }
         if let Some(controller) = slot.as_ref() {
+            if show_about {
+                controller.ivars().pane.set(ABOUT_PANE);
+                if let Some(toolbar) = controller.ivars().window.toolbar() {
+                    toolbar.setSelectedItemIdentifier(Some(&NSString::from_str("About")));
+                }
+            }
             controller.render();
             controller.ivars().window.makeKeyAndOrderFront(None);
         }

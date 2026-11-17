@@ -462,8 +462,11 @@ pub fn run() {
                 .id("preferences")
                 .accelerator("CmdOrCtrl+,")
                 .build(app)?;
+            let about = MenuItemBuilder::new("About Typa")
+                .id("about")
+                .build(app)?;
             let app_menu = SubmenuBuilder::new(app, "Typa")
-                .about_with_text("About Typa", None)
+                .item(&about)
                 .item(&preferences)
                 .separator()
                 .quit_with_text("Quit Typa")
@@ -493,6 +496,10 @@ pub fn run() {
                 if event.id() == preferences.id() {
                     if let Err(error) = preferences::open_preferences(app.clone()) {
                         eprintln!("failed to open preferences: {error}");
+                    }
+                } else if event.id() == about.id() {
+                    if let Err(error) = preferences::open_about(app.clone()) {
+                        eprintln!("failed to open About preferences: {error}");
                     }
                 } else if event.id() == new_window.id() {
                     open_new_window(app);

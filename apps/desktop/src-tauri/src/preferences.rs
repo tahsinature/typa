@@ -1,6 +1,9 @@
 use tauri::AppHandle;
 
 #[cfg(target_os = "macos")]
+mod about;
+
+#[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]
 mod update_copy;
@@ -13,10 +16,18 @@ mod window;
 
 #[tauri::command]
 pub fn open_preferences(app: AppHandle) -> Result<(), String> {
+    open(app, false)
+}
+
+pub fn open_about(app: AppHandle) -> Result<(), String> {
+    open(app, true)
+}
+
+fn open(app: AppHandle, show_about: bool) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let handle = app.clone();
-        app.run_on_main_thread(move || macos::open(handle))
+        app.run_on_main_thread(move || macos::open(handle, show_about))
             .map_err(|error| error.to_string())?;
     }
     #[cfg(not(target_os = "macos"))]
