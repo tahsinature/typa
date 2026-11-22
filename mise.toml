@@ -1,0 +1,53 @@
+# Keep Bun and Rust versions aligned with .github/workflows/release.yml.
+[tools]
+bun = "1.4.2"
+node = "25.2.1"
+rust = "1.95.0"
+
+# macOS builds still require Xcode Command Line Tools (make setup installs them).
+[tasks.setup]
+description = "Install workspace dependencies from the lockfile"
+run = "bun install --frozen-lockfile"
+
+[tasks.dev]
+description = "Start the Tauri desktop app in development mode"
+run = "make dev"
+
+[tasks.build]
+description = "Build the macOS app and DMG"
+run = "make build"
+
+[tasks.test]
+description = "Run engine, desktop, release-script, and Rust tests"
+depends = ["test:engine", "test:desktop", "test:release", "test:rust"]
+
+[tasks."test:engine"]
+description = "Run engine tests with Vitest"
+run = "bun run --filter @typa/engine test"
+
+[tasks."test:desktop"]
+description = "Run desktop tests with Bun"
+run = "bun test apps/desktop/tests"
+
+[tasks."test:release"]
+description = "Run release-script tests with Bun"
+run = "bun test scripts"
+
+[tasks."test:rust"]
+description = "Run Rust unit tests"
+dir = "apps/desktop/src-tauri"
+run = "cargo test --locked"
+
+[tasks.typecheck]
+description = "Check desktop TypeScript types"
+dir = "apps/desktop"
+run = "bunx --no-install tsc --noEmit"
+
+[tasks."check:rust"]
+description = "Check the Rust application"
+dir = "apps/desktop/src-tauri"
+run = "cargo check --locked"
+
+[tasks.check]
+description = "Run all tests and TypeScript and Rust checks"
+depends = ["test", "typecheck", "check:rust"]
