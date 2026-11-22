@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { registerOutputView } from "./registry";
 import { PortBrowserButton } from "./port-browser-button";
 import { ProcessUptime } from "./process-uptime";
+import { normalizeState, filterPortStates } from "./port-state";
+import { PortStateFilter } from "./port-state-filter";
 
 /* ── Types ── */
 
@@ -31,28 +33,6 @@ function formatMemory(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function normalizeState(state: string): string {
-  const s = state.toUpperCase().replace(/[^A-Z_]/g, "");
-  const map: Record<string, string> = {
-    LISTEN: "LISTEN",
-    LISTENING: "LISTEN",
-    ESTABLISHED: "ESTABLISHED",
-    ESTAB: "ESTABLISHED",
-    CLOSE_WAIT: "CLOSE_WAIT",
-    CLOSEWAIT: "CLOSE_WAIT",
-    TIME_WAIT: "TIME_WAIT",
-    TIMEWAIT: "TIME_WAIT",
-    FIN_WAIT_1: "FIN_WAIT",
-    FIN_WAIT_2: "FIN_WAIT",
-    FINWAIT1: "FIN_WAIT",
-    FINWAIT2: "FIN_WAIT",
-    SYN_SENT: "SYN_SENT",
-    SYN_RECV: "SYN_RECV",
-    LAST_ACK: "LAST_ACK",
-    CLOSING: "CLOSING",
-  };
-  return map[s] || s || "UNKNOWN";
-}
 
 const STATE_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   {
@@ -402,6 +382,7 @@ function PortViewer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
 
   const fetchPorts = useCallback(async () => {
     setLoading(true);
@@ -424,7 +405,8 @@ function PortViewer() {
     await invoke("kill_process", { pid });
   }, []);
 
-  const filtered = sortPorts(deduplicatePorts(filterPorts(ports, query)));
+  const uniquePorts = deduplicatePorts(ports);
+  const filtered = sortPorts(filterPortStates(deduplicatePorts(filterPorts(ports, query)), selectedStates));
   const listening = filtered.filter((p) => normalizeState(p.state) === "LISTEN").length;
   const established = filtered.filter((p) => normalizeState(p.state) === "ESTABLISHED").length;
 
@@ -445,6 +427,8 @@ function PortViewer() {
             className="w-full h-[30px] rounded-md pl-8 pr-2.5 text-[12px] bg-bg-input text-text border border-border-subtle outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 placeholder:text-text-faint"
           />
         </div>
+
+        <PortStateFilter ports={uniquePorts} selected={selectedStates} onChange={setSelectedStates} />
 
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-[11px] text-text-secondary">

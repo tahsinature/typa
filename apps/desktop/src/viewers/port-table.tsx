@@ -29,6 +29,8 @@ import {
 import { registerOutputView } from "./registry";
 import { PortBrowserButton } from "./port-browser-button";
 import { ProcessUptime } from "./process-uptime";
+import { normalizeState, filterPortStates } from "./port-state";
+import { PortStateFilter } from "./port-state-filter";
 
 /* ── Types ── */
 
@@ -56,20 +58,6 @@ function formatMemory(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function normalizeState(state: string): string {
-  const s = state.toUpperCase().replace(/[^A-Z_]/g, "");
-  const map: Record<string, string> = {
-    LISTEN: "LISTEN", LISTENING: "LISTEN",
-    ESTABLISHED: "ESTABLISHED", ESTAB: "ESTABLISHED",
-    CLOSE_WAIT: "CLOSE_WAIT", CLOSEWAIT: "CLOSE_WAIT",
-    TIME_WAIT: "TIME_WAIT", TIMEWAIT: "TIME_WAIT",
-    FIN_WAIT_1: "FIN_WAIT", FIN_WAIT_2: "FIN_WAIT",
-    FINWAIT1: "FIN_WAIT", FINWAIT2: "FIN_WAIT",
-    SYN_SENT: "SYN_SENT", SYN_RECV: "SYN_RECV",
-    LAST_ACK: "LAST_ACK", CLOSING: "CLOSING",
-  };
-  return map[s] || s || "UNKNOWN";
-}
 
 const STATE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
   LISTEN: { bg: "rgba(52, 208, 88, 0.08)", text: "#34d058", dot: "#34d058" },
@@ -186,6 +174,7 @@ function PortTableView() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [query, setQuery] = useState("");
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
 
   const fetchPorts = useCallback(async () => {
     setLoading(true);
@@ -297,8 +286,10 @@ function PortTableView() {
     [fetchPorts],
   );
 
+  const stateFilteredPorts = useMemo(() => filterPortStates(ports, selectedStates), [ports, selectedStates]);
+
   const table = useReactTable({
-    data: ports,
+    data: stateFilteredPorts,
     columns,
     state: { sorting, columnVisibility, globalFilter: query },
     onSortingChange: setSorting,
@@ -357,6 +348,7 @@ function PortTableView() {
             className="w-full h-[30px] rounded-md pl-8 pr-2.5 text-[12px] bg-bg-input text-text border border-border-subtle outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 placeholder:text-text-faint"
           />
         </div>
+        <PortStateFilter ports={ports} selected={selectedStates} onChange={setSelectedStates} />
         <button onClick={fetchPorts} disabled={loading} title="Refresh"
           className="flex items-center justify-center size-[28px] rounded-md text-text-faint hover:text-text hover:bg-bg-hover/50 transition-colors disabled:opacity-40">
           <span className={loading ? "animate-spin" : ""}><RefreshIcon /></span>
@@ -403,7 +395,7 @@ function PortTableView() {
 
       {/* Footer */}
       <div className="shrink-0 px-3 py-1.5 text-[11px] text-text-faint">
-        {query ? `${visibleCount} of ${ports.length} port(s)` : `${ports.length} port(s)`}
+        {query || selectedStates.length > 0 ? `${visibleCount} of ${ports.length} port(s)` : `${ports.length} port(s)`}
       </div>
     </div>
   );
