@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { registerOutputView } from "./registry";
+import { PortBrowserButton } from "./port-browser-button";
 
 /* ── Types ── */
 
@@ -299,29 +300,32 @@ function PortCard({
           </span>
           <StateBadge state={entry.state} />
         </div>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <ActionButton tooltip="Copy PID" onClick={() => copyToClipboard(String(entry.pid), "PID")}>
-            {copied === "PID" ? <CheckIcon /> : <CopyIcon />}
-          </ActionButton>
-          <ActionButton tooltip="Copy command" onClick={() => copyToClipboard(entry.command || displayName, "cmd")}>
-            {copied === "cmd" ? (
-              <CheckIcon />
-            ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polyline points="4 17 10 11 4 5" />
-                <line x1="12" y1="19" x2="20" y2="19" />
-              </svg>
-            )}
-          </ActionButton>
-          <ActionButton tooltip={confirmKill ? "Click again to confirm" : "Kill process"} variant="danger" onClick={handleKill}>
-            {killing ? (
-              <span className="size-3 border-2 border-danger/40 border-t-danger rounded-full animate-spin" />
-            ) : confirmKill ? (
-              <span className="text-[9px] font-bold text-danger">Kill?</span>
-            ) : (
-              <KillIcon />
-            )}
-          </ActionButton>
+        <div className="flex items-center gap-0.5">
+          <PortBrowserButton port={entry} />
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150">
+            <ActionButton tooltip="Copy PID" onClick={() => copyToClipboard(String(entry.pid), "PID")}>
+              {copied === "PID" ? <CheckIcon /> : <CopyIcon />}
+            </ActionButton>
+            <ActionButton tooltip="Copy command" onClick={() => copyToClipboard(entry.command || displayName, "cmd")}>
+              {copied === "cmd" ? (
+                <CheckIcon />
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="4 17 10 11 4 5" />
+                  <line x1="12" y1="19" x2="20" y2="19" />
+                </svg>
+              )}
+            </ActionButton>
+            <ActionButton tooltip={confirmKill ? "Click again to confirm" : "Kill process"} variant="danger" onClick={handleKill}>
+              {killing ? (
+                <span className="size-3 border-2 border-danger/40 border-t-danger rounded-full animate-spin" />
+              ) : confirmKill ? (
+                <span className="text-[9px] font-bold text-danger">Kill?</span>
+              ) : (
+                <KillIcon />
+              )}
+            </ActionButton>
+          </div>
         </div>
       </div>
       <div className="px-3.5 pb-2.5 flex flex-wrap gap-x-5 gap-y-1">

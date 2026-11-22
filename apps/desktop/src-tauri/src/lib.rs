@@ -9,6 +9,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 
 mod open_with;
+mod browser;
 mod process_manager;
 mod preferences;
 mod preferences_settings;
@@ -521,6 +522,7 @@ pub fn run() {
             save_png_file,
             open_with::list_image_apps,
             open_with::open_image_with,
+            browser::open_browser_url,
             scan_ports,
             process_manager::scan_processes,
             process_manager::terminate_process,

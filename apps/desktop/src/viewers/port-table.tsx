@@ -27,6 +27,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { registerOutputView } from "./registry";
+import { PortBrowserButton } from "./port-browser-button";
 
 /* ── Types ── */
 
@@ -269,10 +270,15 @@ function PortTableView() {
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => <RowActionsMenu port={row.original} onRefresh={fetchPorts} />,
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-0.5">
+            <PortBrowserButton port={row.original} />
+            <RowActionsMenu port={row.original} onRefresh={fetchPorts} />
+          </div>
+        ),
         enableHiding: false,
         enableSorting: false,
-        size: 40,
+        size: 68,
       },
     ],
     [fetchPorts],
