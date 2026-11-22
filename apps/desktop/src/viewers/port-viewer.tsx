@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { registerOutputView } from "./registry";
 import { PortBrowserButton } from "./port-browser-button";
+import { ProcessUptime } from "./process-uptime";
 
 /* ── Types ── */
 
@@ -15,6 +16,8 @@ interface PortInfo {
   remote_address: string;
   command: string;
   memory_bytes: number;
+  start_time: number | null;
+  uptime_seconds: number | null;
 }
 
 /* ── Helpers ── */
@@ -338,6 +341,7 @@ function PortCard({
             <Detail label="Remote" value={entry.remote_address} />
           )}
         <Detail label="Memory" value={formatMemory(entry.memory_bytes)} />
+        <Detail label="Process uptime" value={<ProcessUptime startTime={entry.start_time} seconds={entry.uptime_seconds} />} />
       </div>
       {entry.command && (
         <div className="px-3.5 pb-2.5">
@@ -350,7 +354,7 @@ function PortCard({
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-[9.5px] uppercase tracking-wider text-text-faint/50 font-medium">

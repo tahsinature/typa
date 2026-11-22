@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { registerOutputView } from "./registry";
 import { PortBrowserButton } from "./port-browser-button";
+import { ProcessUptime } from "./process-uptime";
 
 /* ── Types ── */
 
@@ -41,6 +42,8 @@ interface PortInfo {
   remote_address: string;
   command: string;
   memory_bytes: number;
+  start_time: number | null;
+  uptime_seconds: number | null;
 }
 
 /* ── Helpers ── */
@@ -266,6 +269,16 @@ function PortTableView() {
             {formatMemory(getValue<number>())}
           </span>
         ),
+      },
+      {
+        accessorKey: "uptime_seconds",
+        header: ({ column }) => (
+          <button className="inline-flex items-center gap-1 hover:text-text transition-colors" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Process uptime
+            <span className="opacity-40">{column.getIsSorted() === "asc" ? "\u2191" : column.getIsSorted() === "desc" ? "\u2193" : "\u21C5"}</span>
+          </button>
+        ),
+        cell: ({ row }) => <ProcessUptime startTime={row.original.start_time} seconds={row.original.uptime_seconds} />,
       },
       {
         id: "actions",

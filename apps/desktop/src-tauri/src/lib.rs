@@ -116,6 +116,8 @@ pub struct PortInfo {
     pub remote_address: String,
     pub command: String,
     pub memory_bytes: u64,
+    pub start_time: Option<u64>,
+    pub uptime_seconds: Option<u64>,
 }
 
 /// Raw entry parsed from platform-specific commands (before sysinfo enrichment)
@@ -323,8 +325,17 @@ fn extract_port_from_address(addr: &str) -> Option<u16> {
 fn enrich_with_sysinfo(raw_entries: Vec<RawPortEntry>) -> Vec<PortInfo> {
     let sys = System::new_all();
 
+    #[derive(Clone, Default)]
+    struct ProcessDetails {
+        name: String,
+        command: String,
+        memory_bytes: u64,
+        start_time: Option<u64>,
+        uptime_seconds: Option<u64>,
+    }
+
     // Build a map of PID -> process info
-    let mut process_cache: HashMap<u32, (String, String, u64)> = HashMap::new();
+    let mut process_cache: HashMap<u32, ProcessDetails> = HashMap::new();
 
     for entry in &raw_entries {
         if process_cache.contains_key(&entry.pid) {
@@ -340,31 +351,39 @@ fn enrich_with_sysinfo(raw_entries: Vec<RawPortEntry>) -> Vec<PortInfo> {
                 .map(|s| s.to_string_lossy().to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
-            let memory = process.memory();
-            process_cache.insert(entry.pid, (name, cmd, memory));
+            let start_time = process.start_time();
+            process_cache.insert(entry.pid, ProcessDetails {
+                name,
+                command: cmd,
+                memory_bytes: process.memory(),
+                start_time: (start_time > 0).then_some(start_time),
+                uptime_seconds: (start_time > 0).then(|| process.run_time()),
+            });
         } else {
-            process_cache.insert(entry.pid, (String::new(), String::new(), 0));
+            process_cache.insert(entry.pid, ProcessDetails::default());
         }
     }
 
     raw_entries
         .into_iter()
         .map(|entry| {
-            let (name, command, memory_bytes) = process_cache
+            let process = process_cache
                 .get(&entry.pid)
                 .cloned()
                 .unwrap_or_default();
 
             PortInfo {
                 pid: entry.pid,
-                name,
+                name: process.name,
                 port: entry.port,
                 protocol: entry.protocol,
                 state: entry.state,
                 local_address: entry.local_address,
                 remote_address: entry.remote_address,
-                command,
-                memory_bytes,
+                command: process.command,
+                memory_bytes: process.memory_bytes,
+                start_time: process.start_time,
+                uptime_seconds: process.uptime_seconds,
             }
         })
         .collect()
