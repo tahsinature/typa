@@ -297,6 +297,7 @@ function PortTableView() {
       }
       return (
         p.name.toLowerCase().includes(q) ||
+        p.command.toLowerCase().includes(q) ||
         p.protocol.toLowerCase().includes(q) ||
         normalizeState(p.state).toLowerCase().includes(q)
       );
@@ -333,7 +334,7 @@ function PortTableView() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter by port, name, PID, state..."
+            placeholder="Filter by port, name, command, PID, state..."
             className="w-full h-[30px] rounded-md pl-8 pr-2.5 text-[12px] bg-bg-input text-text border border-border-subtle outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 placeholder:text-text-faint"
           />
         </div>
