@@ -30,10 +30,11 @@ interface Props {
   theme: "dark" | "light";
   onToggle: (id: string) => void;
   onSelect: (id: string | null) => void;
+  onEdit: (id: string) => void;
   onReady: (actions: CanvasActions | null) => void;
 }
 export function TreeCanvas(props: Props) {
-  const { tree, collapsed, query, direction, compact, countMode, selectedId, theme, onToggle, onSelect, onReady } = props;
+  const { tree, collapsed, query, direction, compact, countMode, selectedId, theme, onToggle, onSelect, onEdit, onReady } = props;
   const container = useRef<HTMLDivElement>(null);
   const [instance, setInstance] = useState<ReactFlowInstance<DiagramNode> | null>(null);
   const [minimap, setMinimap] = useState(false);
@@ -73,6 +74,7 @@ export function TreeCanvas(props: Props) {
             selectedRowId: selectedId && shown.some((row) => row.id === selectedId) ? selectedId : null,
             onToggle,
             onSelect,
+            onEdit,
           },
         };
       }
@@ -95,7 +97,7 @@ export function TreeCanvas(props: Props) {
         },
       };
     });
-  }, [graph, selectedId, collapsed, query, countMode, tree, direction, onToggle, onSelect]);
+  }, [graph, selectedId, collapsed, query, countMode, tree, direction, onToggle, onSelect, onEdit]);
 
   const edges = useMemo(() => {
     const selectedNode = graph.nodes.find((node) => node.id === selectedId || node.sections.some((section) =>
@@ -148,6 +150,11 @@ export function TreeCanvas(props: Props) {
         onInit={setInstance}
         onNodesChange={onNodesChange}
         onNodeClick={(_, node) => !isLeavesId(node.id) && onSelect(node.id === OVERVIEW_ID ? null : node.id)}
+        onNodeDoubleClick={(event, node) => {
+          event.stopPropagation();
+          if (node.data.entry) onEdit(node.data.entry.id);
+        }}
+        zoomOnDoubleClick={false}
         onPaneClick={() => onSelect(null)}
         nodesDraggable={direction === "BALANCED"}
         nodesConnectable={false}

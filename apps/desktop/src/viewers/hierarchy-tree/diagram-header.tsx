@@ -16,7 +16,7 @@ export function HierarchyDiagramHeader({ name, count, countTitle, group, collaps
   return (
     <DiagramNodeHeader className="ht-card-header" style={singleRow ? { height: "100%", borderRadius: 9, borderBottom: 0 } : undefined}>
       {onToggle && (
-        <DiagramNodeAction aria-label={`${collapsed ? "Expand" : "Collapse"} ${name}`} aria-expanded={!collapsed} onClick={(event) => { event.stopPropagation(); onToggle(); }}>
+        <DiagramNodeAction aria-label={`${collapsed ? "Expand" : "Collapse"} ${name}`} aria-expanded={!collapsed} onDoubleClick={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle(); }}>
           <TreeIcon name="chevron" width={10} height={10} style={{ transform: collapsed ? undefined : "rotate(90deg)" }} />
         </DiagramNodeAction>
       )}

@@ -1,3 +1,4 @@
+import type { NodeEditRequest } from "./source-navigation";
 import { useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { DndContext, DragOverlay, PointerSensor, pointerWithin, useSensor, useSensors } from "@dnd-kit/core";
 import {
@@ -18,7 +19,7 @@ import { hierarchyColors } from "./model";
 import { NodeEditorRow, readDropZone, type EditorDrop } from "./node-editor-row";
 import type { OutlineDocument } from "./use-outline-document";
 
-export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDocument; selectedId: string | null; onSelect: (id: string) => void }) {
+export function NodeEditor({ editor, selectedId, onSelect, editRequest }: { editRequest: NodeEditRequest | null; editor: OutlineDocument; selectedId: string | null; onSelect: (id: string) => void }) {
   const { entries, focusId } = editor.document;
   const tree = useMemo(() => parseHierarchy(editor.document.source), [editor.document.source]);
   const colors = useMemo(() => hierarchyColors(tree), [tree]);
@@ -43,6 +44,13 @@ export function NodeEditor({ editor, selectedId, onSelect }: { editor: OutlineDo
     focusRow(pendingFocus);
     setPendingFocus(null);
   }, [pendingFocus]);
+
+  useLayoutEffect(() => {
+    if (!editRequest || editRequest.source !== editor.document.source) return;
+    const index = tree.nodes.findIndex((node) => node.id === editRequest.id);
+    const entry = entries[index];
+    if (entry) revealAndFocus(entry.id);
+  }, [editRequest]);
 
   function reveal(next: OutlineEntry[], id: string | null) {
     setFolded((previous) => {

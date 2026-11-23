@@ -8,6 +8,7 @@ import { TreeIcon } from "./icons";
 import { NodeInspector } from "./inspector";
 import { getAncestors, initialCollapsed, type CountMode, type Direction } from "./model";
 import { HierarchyOutline } from "./outline";
+import type { NodeEditRequest } from "./source-navigation";
 import { SourcePanel } from "./source-panel";
 import { WorkspaceActions } from "./workspace-header";
 import { TreeStats, TreeToolbar } from "./workspace-controls";
@@ -26,6 +27,13 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => initialCollapsed(tree));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editRequest, setEditRequest] = useState<NodeEditRequest | null>(null);
+  const editNode = useCallback((id: string) => {
+    if (input !== deferredInput) return;
+    setSelectedId(id);
+    setSourceOpen(true);
+    setEditRequest({ id, source: input });
+  }, [input, deferredInput]);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
@@ -179,6 +187,7 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
         <SourcePanel
           source={input}
           visible={sourceOpen}
+          editRequest={editRequest}
           selectedId={selectedId}
           onSelect={(id) => {
             setQuery("");
@@ -201,10 +210,11 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
                 theme={theme}
                 onToggle={toggle}
                 onSelect={select}
+                onEdit={editNode}
                 onReady={onReady}
               />
             ) : (
-              <HierarchyOutline tree={tree} collapsed={collapsed} query={query} mode={mode} selectedId={selectedId} onToggle={toggle} onSelect={select} />
+              <HierarchyOutline tree={tree} collapsed={collapsed} query={query} mode={mode} selectedId={selectedId} onToggle={toggle} onSelect={select} onEdit={editNode} />
             )
           ) : (
             <EmptyHierarchy error={tree.error} onLoadExample={replaceSource} />
@@ -221,7 +231,7 @@ function HierarchyWorkspace({ input = "", onInputChange, theme }: { data: string
               ? `${tree.format === "json" ? "JSON" : "Outline"} · ${tree.roots.length} root ${tree.roots.length === 1 ? "entry" : "entries"}`
               : "Ready for your outline"}
         </span>
-        <span>Click an entry to inspect · Scroll to zoom · Drag to pan</span>
+        <span>Click to inspect · Double-click to edit · Scroll to zoom · Drag to pan</span>
         <span>Overview excluded from counts</span>
       </footer>
     </div>

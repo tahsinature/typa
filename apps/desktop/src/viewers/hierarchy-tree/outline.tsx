@@ -11,6 +11,7 @@ export function HierarchyOutline({
   selectedId,
   onToggle,
   onSelect,
+  onEdit,
 }: {
   tree: Hierarchy;
   collapsed: Set<string>;
@@ -19,6 +20,7 @@ export function HierarchyOutline({
   selectedId: string | null;
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
 }) {
   const colors = useMemo(() => hierarchyColors(tree), [tree]);
   const entries = useMemo(() => {
@@ -64,7 +66,7 @@ export function HierarchyOutline({
           ) : (
             <span className="ht-outline-dot" />
           )}
-          <button type="button" className="ht-outline-label" onClick={() => onSelect(entry.id)}>
+          <button type="button" className="ht-outline-label" onClick={() => onSelect(entry.id)} onDoubleClick={() => onEdit(entry.id)}>
             <TreeIcon name={entry.children.length ? "tree" : "leaf"} width={15} height={15} />
             <span>{entry.name}</span>
             {entry.children.length > 0 && <small>{entry.children.length} children</small>}

@@ -1,3 +1,4 @@
+import type { NodeEditRequest } from "./source-navigation";
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { hierarchyToBullets, writeOutlineEntries, type Hierarchy, type OutlineEntry } from "@typa/engine";
 import type { OutlineDocument } from "./use-outline-document";
@@ -11,7 +12,7 @@ function itemText(item: HTMLElement) {
   return (clone.textContent ?? "").trim();
 }
 
-export function BulletList({ tree, editor }: { tree: Hierarchy; editor: OutlineDocument }) {
+export function BulletList({ tree, editor, editRequest }: { editRequest: NodeEditRequest | null; tree: Hierarchy; editor: OutlineDocument }) {
   const element = useRef<HTMLDivElement>(null);
   const lastSource = useRef<string | null>(null);
   const composing = useRef(false);
@@ -36,6 +37,23 @@ export function BulletList({ tree, editor }: { tree: Hierarchy; editor: OutlineD
       window.getSelection()?.addRange(range);
     }
   }, [tree, editor.document.source]);
+
+  useLayoutEffect(() => {
+    if (!editRequest || editRequest.source !== editor.document.source) return;
+    const root = element.current;
+    const index = tree.nodes.findIndex((node) => node.id === editRequest.id);
+    const item = root?.querySelectorAll("li")[index];
+    if (!root || !item) return;
+    root.focus({ preventScroll: true });
+    const range = document.createRange();
+    range.setStart(item, 0);
+    const nestedList = Array.from(item.children).find((child) => child.matches("ul, ol"));
+    if (nestedList) range.setEndBefore(nestedList);
+    else range.setEnd(item, item.childNodes.length);
+    window.getSelection()?.removeAllRanges();
+    window.getSelection()?.addRange(range);
+    item.scrollIntoView({ block: "nearest" });
+  }, [editRequest]);
 
   function render() {
     const root = element.current;

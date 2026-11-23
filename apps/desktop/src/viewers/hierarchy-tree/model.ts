@@ -78,6 +78,7 @@ export interface GroupCardData extends Record<string, unknown> {
   selectedRowId: string | null;
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 export type DiagramNode = Node<TreeNodeData, "hierarchy"> | Node<GroupCardData, "groupCard">;
 export interface LayoutNode {

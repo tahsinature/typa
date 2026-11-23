@@ -1,3 +1,4 @@
+import type { NodeEditRequest } from "./source-navigation";
 import { useMemo, useState } from "react";
 import { parseHierarchy } from "@typa/engine";
 import { TreeIcon } from "./icons";
@@ -19,11 +20,12 @@ interface Props {
   source: string;
   visible: boolean;
   selectedId: string | null;
+  editRequest: NodeEditRequest | null;
   onSelect: (id: string) => void;
   onChange: (source: string, focusId?: string) => void;
   onClose: () => void;
 }
-export function SourcePanel({ source, visible, selectedId, onSelect, onChange, onClose }: Props) {
+export function SourcePanel({ source, visible, selectedId, editRequest, onSelect, onChange, onClose }: Props) {
   const [view, setView] = useState<EditorView>("nodes");
   const editor = useOutlineDocument(source, onChange);
   const tree = useMemo(() => parseHierarchy(editor.document.source), [editor.document.source]);
@@ -65,7 +67,7 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
         </div>
       </div>
       {view === "bullets" ? (
-        <BulletList tree={tree} editor={editor} />
+        <BulletList tree={tree} editor={editor} editRequest={editRequest} />
       ) : view === "nodes" ? (
         tree.error ? (
           <div className="ht-node-editor-error">
@@ -76,7 +78,7 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
             </button>
           </div>
         ) : (
-          <NodeEditor editor={editor} selectedId={selectedId} onSelect={onSelect} />
+          <NodeEditor editRequest={editRequest} editor={editor} selectedId={selectedId} onSelect={onSelect} />
         )
       ) : (
         <>
@@ -84,7 +86,7 @@ export function SourcePanel({ source, visible, selectedId, onSelect, onChange, o
             <span>{tree.format === "json" ? "JSON" : "OUTLINE"}</span>
             <span>{editor.document.source.split(/\r?\n/).length} lines</span>
           </div>
-          <RawSourceEditor source={editor.document.source} onChange={editor.editSource} />
+          <RawSourceEditor editRequest={editRequest} source={editor.document.source} onChange={editor.editSource} />
         </>
       )}
       {editor.error && (

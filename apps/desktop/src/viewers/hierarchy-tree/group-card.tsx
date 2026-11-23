@@ -31,14 +31,14 @@ export const GroupCard = memo(function GroupCard({ data, selected }: NodeProps<N
             <section key={heading?.entry.id ?? index} className="ht-card-section">
               {heading && (
                 <ul className="ht-card-rows">
-                  <CardRowItem row={heading} title selected={heading.entry.id === data.selectedRowId} onToggle={data.onToggle} onSelect={data.onSelect} />
+                  <CardRowItem row={heading} title selected={heading.entry.id === data.selectedRowId} onToggle={data.onToggle} onSelect={data.onSelect} onEdit={data.onEdit} />
                 </ul>
               )}
               <div className="ht-card-columns">
                 {columns.map((column, columnIndex) => (
                   <ul key={columnIndex} className="ht-card-rows">
                     {column.map((row) => (
-                      <CardRowItem key={row.entry.id} row={row} selected={row.entry.id === data.selectedRowId} onToggle={data.onToggle} onSelect={data.onSelect} />
+                      <CardRowItem key={row.entry.id} row={row} selected={row.entry.id === data.selectedRowId} onToggle={data.onToggle} onSelect={data.onSelect} onEdit={data.onEdit} />
                     ))}
                   </ul>
                 ))}
@@ -58,15 +58,20 @@ interface CardRowItemProps {
   selected: boolean;
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
-function CardRowItem({ row, title = false, selected, onToggle, onSelect }: CardRowItemProps) {
+function CardRowItem({ row, title = false, selected, onToggle, onSelect, onEdit }: CardRowItemProps) {
   const { entry } = row;
   const group = entry.children.length > 0;
   return (
     <DiagramNodeRow as="li"
       className={`ht-card-row nodrag ${title ? "ht-card-section-title" : ""} ${group ? "is-group" : ""} ${selected ? "is-selected" : ""} ${row.match ? "is-match" : ""}`}
       style={{ paddingLeft: 6 + row.indent * BOARD_ROW_INDENT }}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onEdit(entry.id);
+      }}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(entry.id);
@@ -78,6 +83,7 @@ function CardRowItem({ row, title = false, selected, onToggle, onSelect }: CardR
           className={`ht-card-fold ${row.collapsed ? "" : "is-open"}`}
           aria-label={`${row.collapsed ? "Expand" : "Collapse"} ${entry.name}`}
           aria-expanded={!row.collapsed}
+          onDoubleClick={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
             onToggle(entry.id);

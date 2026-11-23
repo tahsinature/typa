@@ -1,8 +1,31 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { getNodeSourceRange, type NodeEditRequest } from "./source-navigation";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
-export function RawSourceEditor({ source, onChange }: { source: string; onChange: (source: string) => void }) {
+export function RawSourceEditor({ source, onChange, editRequest }: { editRequest: NodeEditRequest | null; source: string; onChange: (source: string) => void }) {
   const editor = useRef<HTMLTextAreaElement>(null);
   const [scroll, setScroll] = useState(0);
+  useLayoutEffect(() => {
+    if (!editRequest || editRequest.source !== source || !editor.current) return;
+    const textarea = editor.current;
+    // Textareas normalize CRLF to LF, so use the displayed value for offsets.
+    const text = textarea.value;
+    const range = getNodeSourceRange(text, editRequest.id);
+    if (!range) return;
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(range.start, range.end);
+    const before = text.slice(0, range.start);
+    const line = before.split("\n").length - 1;
+    const style = getComputedStyle(textarea);
+    const lineHeight = parseFloat(style.lineHeight) || 20;
+    textarea.scrollTop = Math.max(0, line * lineHeight - textarea.clientHeight / 2);
+    const measure = document.createElement("canvas").getContext("2d");
+    if (measure) {
+      measure.font = style.font;
+      const prefix = before.slice(before.lastIndexOf("\n") + 1).replace(/\t/g, "    ");
+      textarea.scrollLeft = Math.max(0, measure.measureText(prefix).width - textarea.clientWidth / 3);
+    }
+  }, [editRequest]);
+
   function indent(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Escape") event.currentTarget.blur();
     if (event.key !== "Tab") return;
