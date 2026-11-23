@@ -3,6 +3,7 @@ import { Allotment } from "allotment";
 import { getTransform, getTransformEmptyState, CATEGORY_META } from "@typa/engine";
 import { useTabStore } from "@/stores/tabStore";
 import { useEngineStore } from "@/stores/engineStore";
+import { WorkspaceInfo } from "@/components/WorkspaceInfo";
 import { TransformEmptyOutput } from "@/components/TransformEmptyOutput";
 import { CalculatorSheet } from "@/components/calculator/CalculatorSheet";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -384,6 +385,15 @@ export function DualPane({ tabId }: { tabId: string }) {
       <PaneHeader>
         <PaneLabel accentColor={accentColor}>Output</PaneLabel>
         <ToolbarGroup>
+          <WorkspaceInfo
+            tabId={tabId}
+            transformer={transform?.name ?? "Unknown transformer"}
+            description={transform?.description}
+            inputPanel={activeInputView ? `${activeInputView.name}${inputCount > 1 ? ` × ${inputCount}` : ""}` : "None"}
+            outputPanel={activeOutputView?.name ?? "None"}
+            preset={activePreset?.label}
+            inToolbar={!outputFullscreen}
+          />
           <IconButton tooltip={outputFullscreen ? "Exit fullscreen ⌘⇧⏎" : "Fullscreen ⌘⇧⏎"} active={outputFullscreen} onClick={() => setOutputFullscreen((f) => !f)}>
             {outputFullscreen ? <ExitFullscreenIcon /> : <FullscreenIcon />}
           </IconButton>

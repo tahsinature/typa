@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MonacoEditor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { WorkspaceInfo } from "@/components/WorkspaceInfo";
+import { useTabId } from "@/lib/tab-context";
 import { TypaEngine } from "@typa/engine";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useEngineStore } from "@/stores/engineStore";
@@ -21,6 +23,7 @@ interface CalculatorSheetProps {
 
 /** Numi-style sheet: expressions on the left, results right-aligned on the same line. */
 export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheetProps) {
+  const tabId = useTabId();
   const fontSize = useSettingsStore((s) => s.fontSize);
   const lineHeight = Math.round(fontSize * 1.6);
   const engine = useSheetEngine();
@@ -63,6 +66,13 @@ export function CalculatorSheet({ input, onInputChange, theme }: CalculatorSheet
 
   return (
     <div className="flex flex-col h-full">
+      <WorkspaceInfo
+        tabId={tabId}
+        transformer="Calculator"
+        description="Evaluate expressions and conversions with results alongside your notes."
+        inputPanel={view === "sheet" ? "Sheet" : "Sheet (hidden)"}
+        outputPanel={{ sheet: "Inline results", table: "Table", image: "Image" }[view]}
+      />
       <CalculatorViewTabs view={view} onChange={setView} selectionCount={selectedLines.length} />
       {view === "table" && <div className="flex-1 min-h-0"><CalculatorTableView rows={rows} /></div>}
       {view === "image" && <div className="flex-1 min-h-0"><CalculatorImageView rows={rows} summary={summary} theme={theme} /></div>}

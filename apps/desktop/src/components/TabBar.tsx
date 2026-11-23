@@ -230,6 +230,8 @@ export function TabBar() {
           <TransformIcon />
         </Tb>
 
+        <span id="workspace-info-trigger" className="flex items-center" />
+
         <ToolbarSep />
 
         <Tb onClick={toggleLayout} tip={layout === 'vertical' ? 'Side-by-side ⌘L' : 'Stacked ⌘L'}>
